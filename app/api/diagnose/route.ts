@@ -11,10 +11,7 @@ import { analyzeBodyType } from '@/lib/analyze';
 import { supabaseAdmin } from '@/lib/supabase';
 import { ApiResponse } from '@/types';
 
-// 最大ペイロードサイズ: 4MB（Next.js デフォルト 1MB を拡張）
-export const config = {
-  api: { bodyParser: { sizeLimit: '4mb' } },
-};
+export const maxDuration = 30;
 
 // 許可する画像 MIME タイプ
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;

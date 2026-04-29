@@ -12,6 +12,8 @@ skeletal-diagnosis/
 │   ├── layout.tsx            # ルートレイアウト（フォント設定）
 │   ├── globals.css           # グローバルスタイル
 │   ├── page.tsx              # メインページ（アップロード＋診断UI）
+│   ├── result/
+│   │   └── page.tsx          # 診断結果表示ページ
 │   ├── admin/
 │   │   └── page.tsx          # 管理者ダッシュボード
 │   └── api/
@@ -21,7 +23,8 @@ skeletal-diagnosis/
 │           └── logs/
 │               └── route.ts  # 管理者用ログ取得API
 ├── components/
-│   ├── ImageUploader.tsx     # 画像アップロード＋ブラウザ側圧縮
+│   ├── ImageUploader.tsx     # 画像アップロード＋クロップ＋ブラウザ側圧縮
+│   ├── DiagnosisButton.tsx   # 診断実行ボタン
 │   └── ResultCard.tsx        # 診断結果表示カード
 ├── lib/
 │   ├── supabase.ts           # Supabaseクライアント（client/admin）

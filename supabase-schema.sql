@@ -10,8 +10,9 @@ CREATE TABLE diagnosis_logs (
   ip_address  TEXT NOT NULL,
   image_url   TEXT,                        -- Supabase Storage のパス
   result_type TEXT NOT NULL,               -- 'straight' | 'wave' | 'natural'
-  result_json JSONB NOT NULL,              -- AI の詳細レスポンス
-  model_used  TEXT DEFAULT 'claude-sonnet-4-20250514'
+  result_json     JSONB NOT NULL,              -- AI の詳細レスポンス
+  model_used      TEXT DEFAULT 'claude-sonnet-4-6',
+  admin_feedback  TEXT                         -- 'correct' | 'straight' | 'wave' | 'natural'
 );
 
 -- 日次カウントテーブル（コスト制御の要）

@@ -6,13 +6,57 @@
 // ============================================================
 
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 import { DiagnosisResult, BodyType } from '@/types';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
-const SYSTEM_PROMPT = `あなたはプロのファッションスタイリストであり、骨格診断の専門家です。
+async function getFeedbackNote(): Promise<string> {
+  try {
+    const db = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    const { data } = await db
+      .from('diagnosis_logs')
+      .select('result_type, admin_feedback')
+      .not('admin_feedback', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (!data || data.length < 5) return '';
+
+    // 誤判定パターンを集計（AI判定 → 正解タイプ）
+    const errors: Record<string, Record<string, number>> = {};
+    for (const row of data) {
+      if (row.admin_feedback === 'correct') continue;
+      const from = row.result_type;
+      const to = row.admin_feedback;
+      if (!errors[from]) errors[from] = {};
+      errors[from][to] = (errors[from][to] ?? 0) + 1;
+    }
+
+    const notes: string[] = [];
+    for (const [from, targets] of Object.entries(errors)) {
+      const total = Object.values(targets).reduce((a, b) => a + b, 0);
+      if (total >= 2) {
+        const top = Object.entries(targets).sort((a, b) => b[1] - a[1])[0];
+        notes.push(`${from}と判定した場合、実際は${top[0]}である可能性が高い傾向があります。${from}の判定は慎重に行ってください。`);
+      }
+    }
+
+    return notes.length > 0
+      ? `\n\n## 過去の診断フィードバックに基づく注意点\n${notes.join('\n')}`
+      : '';
+  } catch {
+    return '';
+  }
+}
+
+const BASE_SYSTEM_PROMPT = `あなたはプロのファッションスタイリストであり、骨格診断の専門家です。
 提供された画像から、日本の骨格診断理論に基づき「ストレート・ウェーブ・ナチュラル」の3タイプを判定してください。
 
 ## 判定基準
@@ -44,10 +88,16 @@ const SYSTEM_PROMPT = `あなたはプロのファッションスタイリスト
 {
   "bodyType": "straight" | "wave" | "natural",
   "confidence": "high" | "medium" | "low",
+  "scores": { "straight": 整数%, "wave": 整数%, "natural": 整数% },
   "description": "このタイプの特徴を2〜3文で説明",
-  "characteristics": ["特徴1", "特徴2", "特徴3"],
+  "observations": ["この写真から読み取れる骨格の特徴1", "特徴2", "特徴3"],
+  "characteristics": ["骨格タイプ全般の特徴1", "特徴2", "特徴3"],
   "styleAdvice": ["スタイルアドバイス1", "スタイルアドバイス2", "スタイルアドバイス3"]
-}`;
+}
+
+scoresは3タイプの可能性を合計100になるよう整数で返してください。bodyTypeは最も高いスコアのタイプと一致させてください。
+observationsは「この写真から実際に確認できる骨格的特徴」を具体的に記述してください。
+写真を見た人が「たしかに！」と共感できる観察内容にしてください。`;
 
 /**
  * 画像（base64）を Claude Vision で分析し骨格タイプを返す
@@ -58,10 +108,13 @@ export async function analyzeBodyType(
   imageBase64: string,
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg'
 ): Promise<DiagnosisResult> {
+  const feedbackNote = await getFeedbackNote();
+  const systemPrompt = BASE_SYSTEM_PROMPT + feedbackNote;
+
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',

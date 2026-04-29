@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+.twinkle        { animation: twinkle 2s ease-in-out infinite; }
+.twinkle-delay  { animation: twinkle 2s ease-in-out 0.7s infinite; }
+.twinkle-delay2 { animation: twinkle 2s ease-in-out 1.4s infinite; }

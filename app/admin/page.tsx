@@ -248,7 +248,6 @@ export default function AdminPage() {
                     style={{
                       padding: '10px 6px',
                       borderRadius: '10px',
-                      border: 'none',
                       background: selected.admin_feedback === t ? TYPE_COLOR[t] : '#fff7f7',
                       color: selected.admin_feedback === t ? '#fff' : TYPE_COLOR[t],
                       fontSize: '11px',

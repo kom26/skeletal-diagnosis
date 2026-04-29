@@ -88,8 +88,31 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
   let result;
   try {
     result = await analyzeBodyType(imageBase64, mimeType);
-  } catch (err) {
-    console.error('[Diagnose] AI analysis error:', err);
+  } catch (err: unknown) {
+    const e = err as { status?: number; message?: string };
+    console.error('[Diagnose] AI analysis error — status:', e.status, '| message:', e.message);
+
+    // API キー未設定 / 認証エラー
+    if (e.status === 401) {
+      return NextResponse.json(
+        { success: false, error: 'API キーが設定されていません。管理者に連絡してください。', code: 'AI_ERROR' },
+        { status: 500 }
+      );
+    }
+    // レート制限
+    if (e.status === 429) {
+      return NextResponse.json(
+        { success: false, error: 'AI サービスが混み合っています。少し時間を置いてから再度お試しください。', code: 'AI_ERROR' },
+        { status: 503 }
+      );
+    }
+    // コンテンツポリシー拒否（Claude がテキスト拒否）
+    if (e.message?.startsWith('NO_JSON:')) {
+      return NextResponse.json(
+        { success: false, error: '画像を分析できませんでした。全身が映った写真をお試しください。', code: 'AI_ERROR' },
+        { status: 422 }
+      );
+    }
     return NextResponse.json(
       { success: false, error: 'AI 分析中にエラーが発生しました。しばらくしてから再度お試しください。', code: 'AI_ERROR' },
       { status: 500 }

@@ -111,37 +111,47 @@ export async function analyzeBodyType(
   const feedbackNote = await getFeedbackNote();
   const systemPrompt = BASE_SYSTEM_PROMPT + feedbackNote;
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mimeType,
-              data: imageBase64,
+  let response;
+  try {
+    response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mimeType,
+                data: imageBase64,
+              },
             },
-          },
-          {
-            type: 'text',
-            text: 'この画像の人物の骨格タイプを診断し、指定された JSON 形式で返してください。',
-          },
-        ],
-      },
-    ],
-  });
+            {
+              type: 'text',
+              text: 'この画像の人物の骨格タイプを診断し、指定された JSON 形式で返してください。',
+            },
+          ],
+        },
+      ],
+    });
+  } catch (err: unknown) {
+    // Anthropic SDK エラーの詳細をログに出す
+    const e = err as { status?: number; message?: string; error?: unknown };
+    console.error('[Analyze] Anthropic API error — status:', e.status, '| message:', e.message, '| body:', JSON.stringify(e.error));
+    throw err;
+  }
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
 
   // JSON を抽出してパース
   const jsonMatch = rawText.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error('AI からの有効なレスポンスが得られませんでした');
+    // Claude がテキストで拒否した場合（コンテンツポリシー等）
+    console.error('[Analyze] No JSON in response — stop_reason:', response.stop_reason, '| raw:', rawText.slice(0, 300));
+    throw new Error(`NO_JSON:${response.stop_reason}:${rawText.slice(0, 100)}`);
   }
 
   const parsed = JSON.parse(jsonMatch[0]) as DiagnosisResult;

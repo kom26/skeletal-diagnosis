@@ -9,10 +9,24 @@ interface Props {
   disabled?: boolean;
 }
 
+type Mode = 'precise' | 'quick';
+
 const JPEG_QUALITY = 0.82;
 const MAX_DIMENSION = 1024;
 
-async function applyFaceMask(imageSrc: string): Promise<string> {
+interface CropOutput {
+  dataUrl: string;
+  imgLeft: number;
+  imgTop: number;
+  imgW: number;
+}
+
+async function applyFaceMask(
+  imageSrc: string,
+  imgLeft: number,
+  imgTop: number,
+  imgW: number,
+): Promise<string> {
   const image = new Image();
   image.src = imageSrc;
   await new Promise<void>((resolve, reject) => {
@@ -24,9 +38,9 @@ async function applyFaceMask(imageSrc: string): Promise<string> {
   canvas.height = image.height;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(image, 0, 0);
-  const r = image.width * 0.14;
-  const cx = image.width / 2;
-  const cy = image.width * 0.14;
+  const r  = imgW * 0.14;
+  const cx = imgLeft + imgW / 2;
+  const cy = imgTop + r;
   ctx.fillStyle = '#080606';
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -34,7 +48,7 @@ async function applyFaceMask(imageSrc: string): Promise<string> {
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
+async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOutput> {
   const image = new Image();
   image.src = imageSrc;
   await new Promise<void>((resolve, reject) => {
@@ -49,10 +63,14 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+
+  const imgLeft = pixelCrop.x < 0 ? Math.round(-pixelCrop.x * scale) : 0;
+  const imgTop  = pixelCrop.y < 0 ? Math.round(-pixelCrop.y * scale) : 0;
+  const imgW    = Math.min(Math.round(image.naturalWidth * scale), canvas.width - imgLeft);
+
+  return { dataUrl: canvas.toDataURL('image/jpeg', JPEG_QUALITY), imgLeft, imgTop, imgW };
 }
 
-// AI送信用：クロップ枠よりさらに15%大きく切り抜く
 async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise<string> {
   const image = new Image();
   image.src = imageSrc;
@@ -79,17 +97,34 @@ async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
+async function resizeImage(imageSrc: string): Promise<string> {
+  const image = new Image();
+  image.src = imageSrc;
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = reject;
+  });
+  const scale = Math.min(MAX_DIMENSION / image.width, MAX_DIMENSION / image.height, 1);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+}
+
 const GUIDES = [
   { label: '股下', top: '56%' },
 ];
 
 export default function ImageUploader({ onImageReady, disabled }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const modeRef   = useRef<Mode>('quick');
   const [rawImage, setRawImage] = useState<string | null>(null);
-  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const [crop, setCrop]     = useState<Point>({ x: 0, y: 0 });
+  const [zoom, setZoom]     = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview]   = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const [overlayRect, setOverlayRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
@@ -101,7 +136,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     setCroppedAreaPixels(pixels);
   }, []);
 
-  // header/footer の実高さを測定して Cropper の上下余白を確定（paint 前に実行）
   useLayoutEffect(() => {
     if (!rawImage) return;
     const top = headerRef.current?.offsetHeight ?? 60;
@@ -109,7 +143,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     setCropperBounds({ top, bottom });
   }, [rawImage]);
 
-  // クロップ中はページスクロールを無効化
   useEffect(() => {
     if (rawImage) {
       document.body.style.overflow = 'hidden';
@@ -120,7 +153,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     return () => { document.body.style.overflow = ''; };
   }, [rawImage]);
 
-  // .reactEasyCrop_CropArea の実 DOM 位置を読み取ってオーバーレイを合わせる
   useEffect(() => {
     if (!rawImage) return;
     let ro: ResizeObserver | null = null;
@@ -146,7 +178,8 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     };
   }, [rawImage]);
 
-  const handleFile = useCallback((file: File) => {
+  // 精密診断用：クロップ画面に進む
+  const handleFilePrecise = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) { alert('画像ファイルを選択してください'); return; }
     if (file.size > 10 * 1024 * 1024) { alert('10MB 以下のファイルを選択してください'); return; }
     const url = URL.createObjectURL(file);
@@ -155,20 +188,39 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     setZoom(1);
   }, []);
 
+  // さくっと診断用：リサイズして即プレビュー
+  const handleFileQuick = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) { alert('画像ファイルを選択してください'); return; }
+    if (file.size > 10 * 1024 * 1024) { alert('10MB 以下のファイルを選択してください'); return; }
+    setProcessing(true);
+    try {
+      const url = URL.createObjectURL(file);
+      const resized = await resizeImage(url);
+      URL.revokeObjectURL(url);
+      setPreview(resized);
+      sessionStorage.setItem('previewImage', resized);
+      onImageReady(resized);
+    } catch {
+      alert('画像の処理に失敗しました');
+    } finally {
+      setProcessing(false);
+    }
+  }, [onImageReady]);
+
   const handleConfirm = async () => {
     if (!rawImage || !croppedAreaPixels) return;
     setProcessing(true);
     try {
-      const [cropped, expanded] = await Promise.all([
+      const [{ dataUrl: cropped, imgLeft, imgTop, imgW }, expanded] = await Promise.all([
         getCroppedImg(rawImage, croppedAreaPixels),
         getCroppedImgExpanded(rawImage, croppedAreaPixels),
       ]);
-      const masked = await applyFaceMask(cropped);
+      const masked = await applyFaceMask(cropped, imgLeft, imgTop, imgW);
       URL.revokeObjectURL(rawImage);
       setRawImage(null);
       setPreview(masked);
-      sessionStorage.setItem('previewImage', masked); // 結果画面用
-      onImageReady(expanded); // AI送信は拡張版（顔・膝下含む）
+      sessionStorage.setItem('previewImage', masked);
+      onImageReady(expanded);
     } catch {
       alert('画像の処理に失敗しました');
     } finally {
@@ -181,20 +233,25 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     setRawImage(null);
   };
 
-  // ── クロップ画面（全画面オーバーレイ）────────────────────
+  const handleReset = () => {
+    setPreview(null);
+    onImageReady('');
+  };
+
+  const openFilePicker = (m: Mode) => {
+    if (disabled) return;
+    modeRef.current = m;
+    inputRef.current?.click();
+  };
+
+  // ── クロップ画面（精密診断のみ）──────────────────────────
   if (rawImage) {
     return (
       <div style={{ position: 'fixed', inset: 0, backgroundColor: '#0c0a09', zIndex: 9998 }}>
-
-        {/* ヘッダー：ref で高さを計測し Cropper の top を決定 */}
         <div
           ref={headerRef}
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 10000,
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10000,
             backgroundColor: 'rgba(12,10,9,0.92)',
             paddingTop: 'env(safe-area-inset-top)',
           }}
@@ -220,16 +277,7 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           </p>
         </div>
 
-        {/* Cropper — ヘッダー・フッターの実測高さで上下を避ける */}
-        <div
-          style={{
-            position: 'absolute',
-            top: cropperBounds.top,
-            bottom: cropperBounds.bottom,
-            left: 0,
-            right: 0,
-          }}
-        >
+        <div style={{ position: 'absolute', top: cropperBounds.top, bottom: cropperBounds.bottom, left: 0, right: 0 }}>
           <Cropper
             image={rawImage}
             crop={crop}
@@ -251,28 +299,20 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           />
         </div>
 
-        {/* ガイド＋顔マスク — .reactEasyCrop_CropArea の実 DOM 位置に重ねる */}
         {overlayRect && (
           <div
             style={{
               position: 'fixed',
-              top: overlayRect.top,
-              left: overlayRect.left,
-              width: overlayRect.width,
-              height: overlayRect.height,
-              zIndex: 100,
-              pointerEvents: 'none',
+              top: overlayRect.top, left: overlayRect.left,
+              width: overlayRect.width, height: overlayRect.height,
+              zIndex: 100, pointerEvents: 'none',
             }}
           >
             <div
               style={{
-                position: 'absolute',
-                top: '0%',
-                left: '50%',
+                position: 'absolute', top: '0%', left: '50%',
                 transform: 'translateX(-50%)',
-                width: '28%',
-                paddingBottom: '28%',
-                height: 0,
+                width: '28%', paddingBottom: '28%', height: 0,
                 backgroundColor: 'rgba(8,6,6,0.80)',
                 borderRadius: '50%',
                 border: '1.5px solid rgba(255,255,255,0.35)',
@@ -281,15 +321,7 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
             {GUIDES.map(({ label, top }) => (
               <div
                 key={label}
-                style={{
-                  position: 'absolute',
-                  top,
-                  left: '4%',
-                  right: '4%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                style={{ position: 'absolute', top, left: '4%', right: '4%', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <div style={{ flex: 1, borderTop: '2px dashed rgba(255,70,70,0.85)' }} />
                 <span style={{ color: 'rgba(255,110,110,1)', fontSize: '12px', whiteSpace: 'nowrap', fontWeight: 600 }}>
@@ -301,15 +333,10 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           </div>
         )}
 
-        {/* フッター：ref で高さを計測し Cropper の bottom を決定 */}
         <div
           ref={footerRef}
           style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 10000,
+            position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10000,
             backgroundColor: 'rgba(12,10,9,0.75)',
             paddingBottom: 'env(safe-area-inset-bottom)',
           }}
@@ -325,7 +352,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
   // ── アップロード画面 ──────────────────────────────────────
   return (
     <div className="w-full">
-      {/* label で直接 input を紐付け — programmatic click 不要 */}
       <input
         ref={inputRef}
         type="file"
@@ -335,30 +361,38 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
         onChange={(e) => {
           const file = e.target.files?.[0];
           e.target.value = '';
-          if (file) handleFile(file);
+          if (!file) return;
+          if (modeRef.current === 'precise') {
+            handleFilePrecise(file);
+          } else {
+            handleFileQuick(file);
+          }
         }}
       />
-      <div
-        onClick={() => { if (!disabled) inputRef.current?.click(); }}
-        style={{
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          ...(preview ? { paddingTop: '16px', paddingBottom: '16px' } : { height: '180px' }),
-          borderRadius: '16px',
-          border: '1.5px dashed #F9A8D4',
-          backgroundColor: 'rgba(255,245,248,0.4)',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.5 : 1,
-          userSelect: 'none',
-          boxSizing: 'border-box',
-        }}
-      >
-        {preview ? (
-          <>
+
+      {preview ? (
+        /* ── プレビュー表示 ── */
+        <>
+          <div
+            onClick={() => { if (!disabled) { inputRef.current?.click(); } }}
+            style={{
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              paddingTop: '16px',
+              paddingBottom: '16px',
+              borderRadius: '16px',
+              border: '1.5px dashed #F9A8D4',
+              backgroundColor: 'rgba(255,245,248,0.4)',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.5 : 1,
+              userSelect: 'none',
+              boxSizing: 'border-box',
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={preview}
@@ -372,27 +406,105 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
                 boxShadow: '0 2px 12px rgba(236,72,153,0.08)',
               }}
             />
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '16px' }}
+            <div
+              style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '16px' }}
               onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
               onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
             >
               <span style={{ color: '#fff', fontSize: '14px', fontWeight: 300, letterSpacing: '0.1em' }}>タップして変更</span>
             </div>
-          </>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '0 24px', textAlign: 'center' }}>
-            <span style={{ background: 'linear-gradient(135deg, #F9A8D4 0%, #EC4899 50%, #BE185D 100%)', color: '#fff', padding: '10px 28px', borderRadius: '50px', fontSize: '14px', fontWeight: 300, letterSpacing: '0.15em', boxShadow: '0 3px 12px rgba(190,24,93,0.22)' }}>
-              写真を選択
-            </span>
-            <p style={{ color: '#a8a29e', fontSize: '12px', margin: 0 }}>JPEG・PNG・WebP / 最大 10MB</p>
           </div>
-        )}
-      </div>
+          <div style={{ textAlign: 'center', marginTop: '10px' }}>
+            <button
+              onClick={handleReset}
+              style={{ background: 'none', border: 'none', color: '#F9A8D4', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'underline', padding: '4px 8px' }}
+            >
+              診断方法を変える
+            </button>
+          </div>
+        </>
+      ) : (
+        /* ── モード選択 ── */
+        <>
+          <p style={{ fontSize: '12px', color: '#C084B4', textAlign: 'center', marginBottom: '14px', letterSpacing: '0.08em', marginTop: 0 }}>
+            写真の種類を選んでください
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
 
-      {!preview && (
-        <p style={{ marginTop: '10px', fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.03em' }}>
-          全身が映った正面からの写真が最も精度の高い結果になります
-        </p>
+            {/* 精密診断カード */}
+            <button
+              disabled={disabled || processing}
+              onClick={() => openFilePicker('precise')}
+              style={{
+                flex: 1,
+                position: 'relative',
+                padding: '20px 14px 16px',
+                borderRadius: '16px',
+                border: '1.5px solid #F9A8D4',
+                background: '#FFF0F5',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.5 : 1,
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0',
+                overflow: 'hidden',
+              }}
+            >
+              {/* アクセントバー */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(to right, #F9A8D4, #EC4899)' }} />
+              <span style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#F9A8D4', marginBottom: '6px' }}>No. 01</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#BE185D', letterSpacing: '0.03em', marginBottom: '8px' }}>精密診断</span>
+              <div style={{ height: '1px', background: 'linear-gradient(to right, #F9A8D4, transparent)', marginBottom: '8px' }} />
+              <span style={{ fontSize: '10px', color: '#9D174D', lineHeight: 1.7 }}>
+                全身正面・薄着で<br />足先まで撮影
+              </span>
+              <span style={{ display: 'inline-block', marginTop: '10px', fontSize: '9px', padding: '2px 8px', borderRadius: '99px', background: 'rgba(236,72,153,0.1)', color: '#EC4899', letterSpacing: '0.05em', alignSelf: 'flex-start' }}>
+                ガイドライン表示
+              </span>
+            </button>
+
+            {/* さくっと診断カード */}
+            <button
+              disabled={disabled || processing}
+              onClick={() => openFilePicker('quick')}
+              style={{
+                flex: 1,
+                position: 'relative',
+                padding: '20px 14px 16px',
+                borderRadius: '16px',
+                border: '1.5px solid #E9D5FF',
+                background: '#FDF9FF',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.5 : 1,
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0',
+                overflow: 'hidden',
+              }}
+            >
+              {/* アクセントバー */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(to right, #E9D5FF, #A855F7)' }} />
+              <span style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#C084FC', marginBottom: '6px' }}>No. 02</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#7E22CE', letterSpacing: '0.03em', marginBottom: '8px' }}>さくっと診断</span>
+              <div style={{ height: '1px', background: 'linear-gradient(to right, #E9D5FF, transparent)', marginBottom: '8px' }} />
+              <span style={{ fontSize: '10px', color: '#6B21A8', lineHeight: 1.7 }}>
+                フォルダの写真を<br />そのまま診断
+              </span>
+              <span style={{ display: 'inline-block', marginTop: '10px', fontSize: '9px', padding: '2px 8px', borderRadius: '99px', background: 'rgba(168,85,247,0.1)', color: '#A855F7', letterSpacing: '0.05em', alignSelf: 'flex-start' }}>
+                ガイドなし
+              </span>
+            </button>
+
+          </div>
+          {processing && (
+            <p style={{ marginTop: '12px', fontSize: '12px', color: '#F9A8D4', textAlign: 'center' }}>処理中...</p>
+          )}
+          <p style={{ marginTop: '12px', fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.03em' }}>
+            JPEG・PNG・WebP / 最大 10MB
+          </p>
+        </>
       )}
     </div>
   );

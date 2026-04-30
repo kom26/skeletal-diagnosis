@@ -92,8 +92,8 @@ export default function HomePage() {
 
           <DiagnosisButton onClick={handleDiagnose} disabled={!imageData || loading} loading={loading} />
 
-          <p style={{ marginTop: '14px', fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.03em' }}>
-            ♡ アップロード画像はAI分析のみに使用されます ♡
+          <p style={{ marginTop: '14px', fontSize: '11px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
+            アップロードされた画像はAI骨格診断の分析にのみ使用されます。<br />第三者に提供されることはありません。
           </p>
         </div>
 

@@ -314,19 +314,11 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
             </p>
           </div>
 
-          {/* 注意事項 */}
-          <div style={{ background: '#FFFBEB', borderRadius: '14px', padding: '14px 16px', marginBottom: '12px', border: '1px solid #FEF3C7' }}>
-            <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#D97706' }}>ご注意</p>
-            <p style={{ margin: 0, fontSize: '12px', color: '#78350F', lineHeight: 1.85 }}>
-              過度な露出がある画像はAIが適切に判定できない場合があります。正面・全身が写っていることを確認してください。
-            </p>
-          </div>
-
-          {/* 年齢 */}
+          {/* ご利用年齢 */}
           <div style={{ background: '#F0FDF4', borderRadius: '14px', padding: '14px 16px', marginBottom: '24px', border: '1px solid #DCFCE7' }}>
             <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#16A34A' }}>ご利用年齢について</p>
             <p style={{ margin: 0, fontSize: '12px', color: '#14532D', lineHeight: 1.85 }}>
-              骨格が安定する<strong>18歳以上の方に向けたサービス</strong>です。18歳未満の方がご利用になる場合は、保護者の同意を得た上でご使用ください。
+              未成年の方がご利用になる場合は必ず保護者の同意を得たうえでご利用ください。また、正確な診断には骨格が安定する18歳以上のご利用を推奨します。
             </p>
           </div>
 
@@ -338,8 +330,9 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
             写真を選ぶ
           </button>
 
-          <p style={{ marginTop: '16px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
-            アップロードされた画像はAI骨格診断の分析にのみ使用されます。<br />第三者に提供されることはありません。
+          <p style={{ marginTop: '14px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
+            過度な露出がある画像はAIが適切に判定できない場合があります。<br />
+            アップロードされた画像はAI骨格診断の分析にのみ使用されます。第三者に提供されることはありません。
           </p>
 
         </div>

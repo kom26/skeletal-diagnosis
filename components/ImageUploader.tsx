@@ -16,16 +16,12 @@ const MAX_DIMENSION = 1024;
 
 interface CropOutput {
   dataUrl: string;
-  imgLeft: number;
   imgTop: number;
-  imgW: number;
 }
 
 async function applyFaceMask(
   imageSrc: string,
-  imgLeft: number,
   imgTop: number,
-  imgW: number,
 ): Promise<string> {
   const image = new Image();
   image.src = imageSrc;
@@ -38,8 +34,10 @@ async function applyFaceMask(
   canvas.height = image.height;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(image, 0, 0);
-  const r  = imgW * 0.14;
-  const cx = imgLeft + imgW / 2;
+  // r・cx はキャンバス幅基準（クロップ枠の overlay 円と同サイズ）
+  // cy は imgTop（画像コンテンツ上端）から r 分下 — ズームアウト時も画像内に収まる
+  const r  = image.width * 0.14;
+  const cx = image.width / 2;
   const cy = imgTop + r;
   ctx.fillStyle = '#080606';
   ctx.beginPath();
@@ -83,11 +81,9 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOut
   }
 
   // 顔マスク位置計算用: キャンバス内の画像開始点と幅
-  const imgLeft = Math.round((srcX - pixelCrop.x) / pixelCrop.width  * cw);
-  const imgTop  = Math.round((srcY - pixelCrop.y) / pixelCrop.height * ch);
-  const imgW    = Math.round(srcW / pixelCrop.width * cw);
+  const imgTop = Math.round((srcY - pixelCrop.y) / pixelCrop.height * ch);
 
-  return { dataUrl: canvas.toDataURL('image/jpeg', JPEG_QUALITY), imgLeft, imgTop, imgW };
+  return { dataUrl: canvas.toDataURL('image/jpeg', JPEG_QUALITY), imgTop };
 }
 
 async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise<string> {
@@ -230,11 +226,11 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     if (!rawImage || !croppedAreaPixels) return;
     setProcessing(true);
     try {
-      const [{ dataUrl: cropped, imgLeft, imgTop, imgW }, expanded] = await Promise.all([
+      const [{ dataUrl: cropped, imgTop }, expanded] = await Promise.all([
         getCroppedImg(rawImage, croppedAreaPixels),
         getCroppedImgExpanded(rawImage, croppedAreaPixels),
       ]);
-      const masked = await applyFaceMask(cropped, imgLeft, imgTop, imgW);
+      const masked = await applyFaceMask(cropped, imgTop);
       URL.revokeObjectURL(rawImage);
       setRawImage(null);
       setPreview(masked);

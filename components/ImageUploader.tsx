@@ -266,8 +266,8 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
   };
 
   const handleGuideConfirm = () => {
+    inputRef.current?.click(); // ユーザージェスチャー内で先に呼ぶ（iOS Safari対応）
     setShowGuide(false);
-    inputRef.current?.click();
   };
 
   // ── 撮影ガイド画面（精密診断のみ）────────────────────────

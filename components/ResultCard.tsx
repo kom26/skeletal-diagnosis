@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { DiagnosisResult, BodyType } from '@/types';
 
 const TYPE_META: Record<BodyType, {
@@ -45,9 +46,11 @@ interface Props {
 
 export default function ResultCard({ result, onRetry }: Props) {
   const meta = TYPE_META[result.bodyType];
+  const [showTips, setShowTips] = useState(false);
 
   const CONF_LABEL: Record<string, string> = { high: '高', medium: '中', low: '低' };
   const confidenceLabel = CONF_LABEL[result.confidence as string] ?? '中';
+  const hasTips = (result.confidence === 'medium' || result.confidence === 'low') && result.confidenceTips && result.confidenceTips.length > 0;
 
   // スコアを降順ソート（常に3タイプ表示）
   const sortedTypes = [...ALL_TYPES].sort(
@@ -74,19 +77,56 @@ export default function ResultCard({ result, onRetry }: Props) {
         <div style={{ height: '1px', background: `linear-gradient(to right, ${meta.accentColor}60, transparent)`, marginBottom: '16px' }} />
 
         {/* 画像の診断適性 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div>
-            <span style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.6, letterSpacing: '0.08em' }}>この画像からの信頼度</span>
-            <span style={{ fontSize: '10px', color: meta.titleColor, opacity: 0.4, display: 'block', marginTop: '1px' }}>服装・角度・体型の見えやすさで評価</span>
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <span style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.6, letterSpacing: '0.08em' }}>この画像からの信頼度</span>
+              <span style={{ fontSize: '10px', color: meta.titleColor, opacity: 0.4, display: 'block', marginTop: '1px' }}>服装・角度・体型の見えやすさで評価</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                fontSize: '13px', fontWeight: 700, letterSpacing: '0.12em',
+                color: meta.accentColor,
+                background: `${meta.accentColor}18`,
+                padding: '4px 14px',
+                borderRadius: '99px',
+                border: `1px solid ${meta.accentColor}40`,
+              }}>{confidenceLabel}</span>
+              {hasTips && (
+                <button
+                  onClick={() => setShowTips(!showTips)}
+                  style={{
+                    width: '26px', height: '26px', borderRadius: '50%',
+                    background: showTips ? '#F59E0B' : '#FEF3C7',
+                    border: '1.5px solid #F59E0B',
+                    color: showTips ? '#fff' : '#B45309',
+                    fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >?</button>
+              )}
+            </div>
           </div>
-          <span style={{
-            fontSize: '13px', fontWeight: 700, letterSpacing: '0.12em',
-            color: meta.accentColor,
-            background: `${meta.accentColor}18`,
-            padding: '4px 14px',
-            borderRadius: '99px',
-            border: `1px solid ${meta.accentColor}40`,
-          }}>{confidenceLabel}</span>
+
+          {/* 改善ヒントパネル */}
+          {hasTips && showTips && (
+            <div style={{ marginTop: '12px', background: '#FFFBEB', borderRadius: '12px', padding: '14px 16px', border: '1.5px solid #FDE68A' }}>
+              <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#B45309', letterSpacing: '0.08em' }}>
+                📷 精度を上げるには
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {result.confidenceTips!.map((tip, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>
+                      <span style={{ color: '#fff', fontSize: '10px', fontWeight: 700 }}>{i + 1}</span>
+                    </div>
+                    <span style={{ fontSize: '12px', color: '#78350F', lineHeight: 1.75 }}>{tip}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 3タイプのスコアバー（常に表示・降順） */}

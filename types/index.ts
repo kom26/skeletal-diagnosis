@@ -17,6 +17,7 @@ export interface DiagnosisResult {
   observations: string[];
   characteristics: string[];
   styleAdvice: string[];
+  confidenceTips?: string[];
   rawResponse?: string;
 }
 

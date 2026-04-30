@@ -115,14 +115,20 @@ STEP4「比率・フレーム感を確認」（軸1の補助指標）
 ## スコアリング基準
 3軸それぞれに各タイプの一致度（0〜100）を仮評価し、加重平均でfinalスコアを算出する。
 どのタイプも可能性ゼロにしてはならない（最低5点以上）。
-スコア差が15点以下の場合は confidence を80以下にする。
-最高スコアのタイプをbodyTypeに設定し、confidenceはそのタイプへの確信度を65〜100の整数で表す。
+最高スコアのタイプをbodyTypeに設定する。
+
+## 画像診断適性（confidence）の評価基準
+骨格診断に必要な情報がこの写真から読み取れるかを評価する。
+- "high"  ：薄着または体のラインがはっきりわかる服装、ほぼ正面、全身または上半身がしっかり写っている
+- "medium"：ある程度体型はわかるが、服が厚めまたは斜め気味、一部が見切れているなど
+- "low"   ：厚着・コート等で体型がほぼ隠れている、横向き・後ろ向き、顔・頭部しか写っていない等
+骨格タイプの判定精度とは独立した評価軸。体型が明らかでもハッキリ断言できない場合はスコア差で表現し、confidenceは画像品質のみで決定する。
 
 ## レスポンス形式
 必ず以下の JSON 形式のみで返答してください：
 {
   "bodyType": "straight" | "wave" | "natural",
-  "confidence": 65〜100の整数（確信が高いほど大きい値、最低65・最高100・1刻み）,
+  "confidence": "high" | "medium" | "low",  // 画像の診断適性（体型の見えやすさ・角度・服装で判定）
   "scores": { "straight": 整数%, "wave": 整数%, "natural": 整数% },
   "description": "このタイプの特徴を2〜3文で説明",
   "observations": ["この写真から読み取れる骨格の特徴1", "特徴2", "特徴3"],
@@ -130,7 +136,12 @@ STEP4「比率・フレーム感を確認」（軸1の補助指標）
   "styleAdvice": ["スタイルアドバイス1", "スタイルアドバイス2", "スタイルアドバイス3"]
 }
 
-scoresは3タイプの可能性を合計100になるよう整数で返してください。bodyTypeは最も高いスコアのタイプと一致させてください。
+scoresの制約（必ず守ること）:
+- bodyTypeのスコア（最高値）: 60〜89の整数（1刻み）
+- 残り2タイプのスコア: それぞれ5〜40の整数（1刻み）
+- 3つのスコアの合計は必ず100にすること
+- bodyTypeは最も高いスコアのタイプと一致させること
+
 observationsは上記STEPで実際に確認した内容を具体的に記述してください。写真を見た人が「たしかに！」と共感できる内容にしてください。`;
 
 /**
@@ -196,11 +207,11 @@ export async function analyzeBodyType(
     throw new Error(`不明な骨格タイプ: ${parsed.bodyType}`);
   }
 
-  // confidence を必ず数値 65-100 に正規化（旧形式の文字列にも対応）
+  // confidence を 'high'|'medium'|'low' に正規化
   const rawConf = (parsed as unknown as Record<string, unknown>).confidence;
-  const numConf = typeof rawConf === 'number' ? rawConf
-    : rawConf === 'high' ? 90 : rawConf === 'medium' ? 75 : 65;
-  parsed.confidence = Math.max(65, Math.min(100, Math.round(numConf)));
+  if (rawConf !== 'high' && rawConf !== 'medium' && rawConf !== 'low') {
+    parsed.confidence = 'medium';
+  }
 
   return { ...parsed, rawResponse: rawText };
 }

@@ -4,7 +4,7 @@ export type BodyType = 'straight' | 'wave' | 'natural';
 
 export interface DiagnosisResult {
   bodyType: BodyType;
-  confidence: number; // 65-100
+  confidence: 'high' | 'medium' | 'low'; // 画像の診断適性（薄着・正面→high）
   scores: { straight: number; wave: number; natural: number };
   description: string;
   observations: string[];

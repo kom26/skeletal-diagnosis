@@ -46,11 +46,8 @@ interface Props {
 export default function ResultCard({ result, onRetry }: Props) {
   const meta = TYPE_META[result.bodyType];
 
-  // confidence は 65-100 の数値（旧データの文字列にもフォールバック）
-  const rawConf = result.confidence as unknown;
-  const confidencePct: number =
-    typeof rawConf === 'number' ? rawConf
-    : rawConf === 'high' ? 90 : rawConf === 'medium' ? 75 : 65;
+  const CONF_LABEL: Record<string, string> = { high: '高', medium: '中', low: '低' };
+  const confidenceLabel = CONF_LABEL[result.confidence as string] ?? '中';
 
   // スコアを降順ソート（常に3タイプ表示）
   const sortedTypes = [...ALL_TYPES].sort(
@@ -76,22 +73,20 @@ export default function ResultCard({ result, onRetry }: Props) {
 
         <div style={{ height: '1px', background: `linear-gradient(to right, ${meta.accentColor}60, transparent)`, marginBottom: '16px' }} />
 
-        {/* 信頼度バー */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-            <span style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.6, letterSpacing: '0.08em' }}>AI判定の信頼度</span>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: meta.accentColor }}>{confidencePct}%</span>
+        {/* 画像の診断適性 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div>
+            <span style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.6, letterSpacing: '0.08em' }}>この画像からの信頼度</span>
+            <span style={{ fontSize: '10px', color: meta.titleColor, opacity: 0.4, display: 'block', marginTop: '1px' }}>服装・角度・体型の見えやすさで評価</span>
           </div>
-          {/* バーは 65-100 の範囲を表示（65%を0%起点として視覚化） */}
-          <div style={{ height: '6px', borderRadius: '99px', background: `${meta.accentColor}20`, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%',
-              width: `${((confidencePct - 65) / 35) * 100}%`,
-              background: `linear-gradient(to right, ${meta.accentColor}80, ${meta.accentColor})`,
-              borderRadius: '99px',
-              transition: 'width 0.6s ease',
-            }} />
-          </div>
+          <span style={{
+            fontSize: '13px', fontWeight: 700, letterSpacing: '0.12em',
+            color: meta.accentColor,
+            background: `${meta.accentColor}18`,
+            padding: '4px 14px',
+            borderRadius: '99px',
+            border: `1px solid ${meta.accentColor}40`,
+          }}>{confidenceLabel}</span>
         </div>
 
         {/* 3タイプのスコアバー（常に表示・降順） */}

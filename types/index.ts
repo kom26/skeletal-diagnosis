@@ -13,13 +13,18 @@ export interface DiagnosisResult {
   rawResponse?: string;
 }
 
+export interface DiagnosisErrorLog {
+  error: string;
+  code: string;
+}
+
 export interface DiagnosisLog {
   id: string;
   created_at: string;
   ip_address: string;
   image_url: string | null;
-  result_type: BodyType;
-  result_json: DiagnosisResult;
+  result_type: BodyType | 'error';
+  result_json: DiagnosisResult | DiagnosisErrorLog | null;
   model_used: string;
   admin_feedback: string | null;
 }

@@ -36,6 +36,33 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ logs });
 }
 
+export async function DELETE(req: NextRequest) {
+  if (!checkAuth(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { ids } = await req.json();
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json({ error: 'Bad request' }, { status: 400 });
+  }
+
+  const db = supabaseAdmin();
+
+  // Storage の画像パスを取得して削除
+  const { data: rows } = await db.from('diagnosis_logs').select('image_url').in('id', ids);
+  const imagePaths = (rows ?? []).map((r) => r.image_url).filter(Boolean) as string[];
+  if (imagePaths.length > 0) {
+    await db.storage.from('diagnosis-images').remove(imagePaths);
+  }
+
+  const { error } = await db.from('diagnosis_logs').delete().in('id', ids);
+  if (error) {
+    return NextResponse.json({ error: 'DB error' }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(req: NextRequest) {
   if (!checkAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

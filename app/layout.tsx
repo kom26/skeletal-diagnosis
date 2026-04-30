@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { ABeeZee, DM_Sans } from 'next/font/google';
 import './globals.css';
 
@@ -12,6 +12,13 @@ const dmSans = DM_Sans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: 'SKELÉ — AI骨格診断',

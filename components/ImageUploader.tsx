@@ -291,7 +291,7 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', background: '#FFF0F5', borderRadius: '16px', padding: '16px', marginBottom: '16px', border: '1px solid #FCE7F3' }}>
             <div style={{ flexShrink: 0, width: '110px' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/guide-body.jpg" alt="骨格診断撮影ガイド" style={{ width: '100%', display: 'block', borderRadius: '8px' }} />
+              <img src="/guide-body.png" alt="骨格診断撮影ガイド" style={{ width: '100%', display: 'block', borderRadius: '8px' }} />
             </div>
             <div style={{ flex: 1, paddingTop: '4px' }}>
               <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#EC4899' }}>以下が写っているか確認</p>
@@ -337,6 +337,10 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           >
             写真を選ぶ
           </button>
+
+          <p style={{ marginTop: '16px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
+            アップロードされた画像はAI骨格診断の分析にのみ使用されます。<br />第三者への提供・共有は一切行いません。
+          </p>
 
         </div>
       </div>
@@ -558,9 +562,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
               <span style={{ fontSize: '10px', color: '#9D174D', lineHeight: 1.7 }}>
                 全身正面・薄着で<br />足先まで撮影
               </span>
-              <span style={{ display: 'inline-block', marginTop: '10px', fontSize: '9px', padding: '2px 8px', borderRadius: '99px', background: 'rgba(236,72,153,0.1)', color: '#EC4899', letterSpacing: '0.05em', alignSelf: 'flex-start' }}>
-                ガイドライン表示
-              </span>
             </button>
 
             {/* さくっと診断カード */}
@@ -591,9 +592,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
               <span style={{ fontSize: '10px', color: '#6B21A8', lineHeight: 1.7 }}>
                 フォルダの写真を<br />そのまま診断
               </span>
-              <span style={{ display: 'inline-block', marginTop: '10px', fontSize: '9px', padding: '2px 8px', borderRadius: '99px', background: 'rgba(168,85,247,0.1)', color: '#A855F7', letterSpacing: '0.05em', alignSelf: 'flex-start' }}>
-                ガイドなし
-              </span>
             </button>
 
           </div>
@@ -602,6 +600,9 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           )}
           <p style={{ marginTop: '12px', fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.03em' }}>
             JPEG・PNG・WebP / 最大 10MB
+          </p>
+          <p style={{ marginTop: '10px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
+            アップロードされた画像はAI骨格診断の分析にのみ使用されます。<br />第三者への提供・共有は一切行いません。
           </p>
         </>
       )}

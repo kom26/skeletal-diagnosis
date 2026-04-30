@@ -32,7 +32,7 @@ export default function HomePage() {
         setLoading(false);
         return;
       }
-      sessionStorage.setItem('diagnosisResult', JSON.stringify(json.data));
+      localStorage.setItem('diagnosisResult', JSON.stringify(json.data));
       router.push('/result');
     } catch {
       setErrorMsg('通信エラーが発生しました。しばらくしてから再度お試しください。');

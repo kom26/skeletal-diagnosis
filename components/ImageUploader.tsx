@@ -205,7 +205,7 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
       URL.revokeObjectURL(rawImage);
       setRawImage(null);
       setPreview(masked);
-      sessionStorage.setItem('previewImage', masked);
+      localStorage.setItem('previewImage', masked);
       onImageReady(expanded);
     } catch {
       alert('画像の処理に失敗しました');

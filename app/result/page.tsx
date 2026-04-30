@@ -13,18 +13,19 @@ export default function ResultPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('diagnosisResult');
+    const stored = localStorage.getItem('diagnosisResult');
     if (!stored) { router.replace('/'); return; }
     try {
       setResult(JSON.parse(stored));
-      setPreviewImage(sessionStorage.getItem('previewImage'));
+      setPreviewImage(localStorage.getItem('previewImage'));
     } catch {
       router.replace('/');
     }
   }, [router]);
 
   const handleRetry = () => {
-    sessionStorage.removeItem('diagnosisResult');
+    localStorage.removeItem('diagnosisResult');
+    localStorage.removeItem('previewImage');
     router.push('/');
   };
 

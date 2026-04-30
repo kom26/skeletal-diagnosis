@@ -132,38 +132,6 @@ const GUIDES = [
   { label: '股下', top: '56%' },
 ];
 
-function BodyGuideSVG() {
-  const accent = '#EC4899';
-  const bodyFill = '#FFD6E8';
-  return (
-    <svg viewBox="0 0 100 240" style={{ width: '100%', display: 'block' }}>
-      {/* Head - dark mask */}
-      <circle cx="50" cy="18" r="14" fill="#1c1917" opacity="0.82" />
-      {/* Neck */}
-      <rect x="45" y="31" width="10" height="9" rx="2" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
-      {/* Upper body */}
-      <polygon points="22,42 78,42 68,105 32,105" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
-      {/* Left arm */}
-      <line x1="22" y1="44" x2="12" y2="98" stroke={accent} strokeWidth="7" strokeLinecap="round" />
-      {/* Right arm */}
-      <line x1="78" y1="44" x2="88" y2="98" stroke={accent} strokeWidth="7" strokeLinecap="round" />
-      {/* Hips */}
-      <polygon points="32,105 68,105 72,122 28,122" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
-      {/* Left leg */}
-      <rect x="28" y="122" width="18" height="72" rx="3" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
-      {/* Right leg */}
-      <rect x="54" y="122" width="18" height="72" rx="3" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
-      {/* Landmark dots */}
-      <circle cx="50" cy="40" r="2.8" fill={accent} />   {/* 首の付け根 */}
-      <circle cx="65" cy="48" r="2.2" fill={accent} />   {/* 鎖骨 */}
-      <circle cx="35" cy="48" r="2.2" fill={accent} />
-      <circle cx="67" cy="105" r="2.5" fill={accent} />  {/* ウエスト */}
-      <circle cx="71" cy="118" r="2.5" fill={accent} />  {/* ヒップ */}
-      <circle cx="13" cy="99" r="2.5" fill={accent} />   {/* 手首 */}
-      <circle cx="63" cy="193" r="2.5" fill={accent} />  {/* 膝 */}
-    </svg>
-  );
-}
 
 export default function ImageUploader({ onImageReady, disabled }: Props) {
   const inputRef  = useRef<HTMLInputElement>(null);
@@ -321,8 +289,9 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
 
           {/* イラスト + チェックリスト */}
           <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', background: '#FFF0F5', borderRadius: '16px', padding: '16px', marginBottom: '16px', border: '1px solid #FCE7F3' }}>
-            <div style={{ flexShrink: 0, width: '90px' }}>
-              <BodyGuideSVG />
+            <div style={{ flexShrink: 0, width: '110px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/guide-body.jpg" alt="骨格診断撮影ガイド" style={{ width: '100%', display: 'block', borderRadius: '8px' }} />
             </div>
             <div style={{ flex: 1, paddingTop: '4px' }}>
               <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#EC4899' }}>以下が写っているか確認</p>

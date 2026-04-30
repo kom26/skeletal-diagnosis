@@ -2,6 +2,13 @@
 
 export type BodyType = 'straight' | 'wave' | 'natural';
 
+export interface BodyInfo {
+  age?: number;
+  height?: number;
+  weight?: number;
+  cup?: string;
+}
+
 export interface DiagnosisResult {
   bodyType: BodyType;
   confidence: 'high' | 'medium' | 'low'; // 画像の診断適性（薄着・正面→high）
@@ -27,6 +34,7 @@ export interface DiagnosisLog {
   result_json: DiagnosisResult | DiagnosisErrorLog | null;
   model_used: string;
   admin_feedback: string | null;
+  body_info?: BodyInfo | null;
 }
 
 export interface ApiResponse<T = DiagnosisResult> {

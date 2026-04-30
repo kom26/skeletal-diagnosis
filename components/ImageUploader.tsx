@@ -3,13 +3,14 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import type { Point, Area } from 'react-easy-crop';
+import { BodyInfo } from '@/types';
 
 interface Props {
   onImageReady: (dataUrl: string) => void;
+  onBodyInfoChange: (info: BodyInfo) => void;
+  onMinorBlock?: (blocked: boolean) => void;
   disabled?: boolean;
 }
-
-type Mode = 'precise' | 'quick';
 
 const JPEG_QUALITY = 0.82;
 const MAX_DIMENSION = 1024;
@@ -112,37 +113,23 @@ async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-async function resizeImage(imageSrc: string): Promise<string> {
-  const image = new Image();
-  image.src = imageSrc;
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = reject;
-  });
-  const scale = Math.min(MAX_DIMENSION / image.width, MAX_DIMENSION / image.height, 1);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(image.width * scale);
-  canvas.height = Math.round(image.height * scale);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-}
 
 const GUIDES = [
   { label: '股下', top: '56%' },
 ];
 
 
-export default function ImageUploader({ onImageReady, disabled }: Props) {
+export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorBlock, disabled }: Props) {
   const inputRef  = useRef<HTMLInputElement>(null);
-  const modeRef   = useRef<Mode>('quick');
   const [showGuide, setShowGuide] = useState(false);
+  const [bodyInfo, setBodyInfo] = useState<BodyInfo>({});
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [crop, setCrop]     = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom]     = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [preview, setPreview]   = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [parentalConsent, setParentalConsent] = useState(false);
 
   const [overlayRect, setOverlayRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -205,24 +192,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
     setZoom(1);
   }, []);
 
-  // さくっと診断用：リサイズして即プレビュー
-  const handleFileQuick = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/')) { alert('画像ファイルを選択してください'); return; }
-    if (file.size > 10 * 1024 * 1024) { alert('10MB 以下のファイルを選択してください'); return; }
-    setProcessing(true);
-    try {
-      const url = URL.createObjectURL(file);
-      const resized = await resizeImage(url);
-      URL.revokeObjectURL(url);
-      setPreview(resized);
-      sessionStorage.setItem('previewImage', resized);
-      onImageReady(resized);
-    } catch {
-      alert('画像の処理に失敗しました');
-    } finally {
-      setProcessing(false);
-    }
-  }, [onImageReady]);
 
   const handleConfirm = async () => {
     if (!rawImage || !croppedAreaPixels) return;
@@ -252,22 +221,27 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
 
   const handleReset = () => {
     setPreview(null);
+    setBodyInfo({});
+    setParentalConsent(false);
     onImageReady('');
+    onBodyInfoChange({});
   };
 
-  const openFilePicker = (m: Mode) => {
-    if (disabled) return;
-    modeRef.current = m;
-    if (m === 'precise') {
-      setShowGuide(true);
-    } else {
-      inputRef.current?.click();
-    }
+  const updateBodyInfo = (patch: Partial<BodyInfo>) => {
+    const next = { ...bodyInfo, ...patch };
+    setBodyInfo(next);
+    onBodyInfoChange(next);
   };
+
+  useEffect(() => {
+    const blocked = typeof bodyInfo.age === 'number' && bodyInfo.age <= 17 && !parentalConsent;
+    onMinorBlock?.(blocked);
+  }, [bodyInfo.age, parentalConsent, onMinorBlock]);
+
+  const openGuide = () => { if (!disabled) setShowGuide(true); };
 
   const handleGuideConfirm = () => {
     inputRef.current?.click(); // ユーザージェスチャー内で呼ぶ（iOS Safari対応）
-    // ガイドは写真選択確定後に閉じる（onChange側で制御）
   };
 
   // ── 単一 return（input は常時DOMに存在させる）────────────
@@ -285,12 +259,8 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           const file = e.target.files?.[0];
           e.target.value = '';
           if (!file) return;
-          setShowGuide(false); // 写真が選ばれた時点でガイドを閉じる
-          if (modeRef.current === 'precise') {
-            handleFilePrecise(file);
-          } else {
-            handleFileQuick(file);
-          }
+          setShowGuide(false);
+          handleFilePrecise(file);
         }}
       />
 
@@ -410,43 +380,98 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
       {!showGuide && !rawImage && (
         preview ? (
           <>
+            {/* プレビュー画像（タップで撮り直し） */}
             <div
-              onClick={() => { if (!disabled) inputRef.current?.click(); }}
+              onClick={() => { if (!disabled) openGuide(); }}
               style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: '16px', paddingBottom: '16px', borderRadius: '16px', border: '1.5px dashed #F9A8D4', backgroundColor: 'rgba(255,245,248,0.4)', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, userSelect: 'none', boxSizing: 'border-box' }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={preview} alt="プレビュー" style={{ width: '75%', height: 'auto', display: 'block', borderRadius: '12px', border: '1.5px solid #FCE7F3', boxShadow: '0 2px 12px rgba(236,72,153,0.08)' }} />
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '16px' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
-                <span style={{ color: '#fff', fontSize: '14px', fontWeight: 300, letterSpacing: '0.1em' }}>タップして変更</span>
+                <span style={{ color: '#fff', fontSize: '14px', fontWeight: 300, letterSpacing: '0.1em' }}>タップして撮り直す</span>
               </div>
             </div>
+
+            {/* 任意情報フォーム */}
+            <div style={{ marginTop: '16px', background: '#FFF5F8', borderRadius: '14px', padding: '16px', border: '1px solid #FCE7F3' }}>
+              <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#EC4899' }}>参考情報（任意）</p>
+              <p style={{ margin: '0 0 12px', fontSize: '10px', color: '#a8a29e', lineHeight: 1.6 }}>入力するとAIがより精確に診断します。<br />18歳未満のご利用は保護者の同意が必要です。</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {[
+                  { key: 'age',    label: '年齢', unit: '歳', placeholder: '例: 25' },
+                  { key: 'height', label: '身長', unit: 'cm', placeholder: '例: 158' },
+                  { key: 'weight', label: '体重', unit: 'kg', placeholder: '例: 52' },
+                ].map(({ key, label, unit, placeholder }) => (
+                  <div key={key}>
+                    <p style={{ margin: '0 0 4px', fontSize: '10px', color: '#9D174D', fontWeight: 600 }}>{label}<span style={{ fontWeight: 400, color: '#a8a29e' }}> ({unit})</span></p>
+                    <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '8px', border: '1px solid #FCE7F3', overflow: 'hidden' }}>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder={placeholder}
+                        value={(bodyInfo[key as keyof BodyInfo] as number | undefined) ?? ''}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          updateBodyInfo({ [key]: raw === '' ? undefined : Number(raw) });
+                        }}
+                        style={{ flex: 1, border: 'none', outline: 'none', padding: '8px 10px', fontSize: '13px', color: '#1c1917', background: 'transparent', width: 0 }}
+                      />
+                      <span style={{ paddingRight: '8px', fontSize: '11px', color: '#a8a29e', flexShrink: 0 }}>{unit}</span>
+                    </div>
+                  </div>
+                ))}
+                {/* カップ数セレクト */}
+                <div>
+                  <p style={{ margin: '0 0 4px', fontSize: '10px', color: '#9D174D', fontWeight: 600 }}>カップ数</p>
+                  <select
+                    value={bodyInfo.cup ?? ''}
+                    onChange={e => updateBodyInfo({ cup: e.target.value || undefined })}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: '13px', color: bodyInfo.cup ? '#1c1917' : '#a8a29e', background: '#fff', border: '1px solid #FCE7F3', borderRadius: '8px', outline: 'none', appearance: 'none', WebkitAppearance: 'none' }}
+                  >
+                    <option value="">選択</option>
+                    {['A','B','C','D','E','F','G','H'].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 未成年チェック */}
+            {typeof bodyInfo.age === 'number' && bodyInfo.age <= 17 && (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={parentalConsent}
+                  onChange={e => setParentalConsent(e.target.checked)}
+                  style={{ marginTop: '2px', accentColor: '#EC4899', flexShrink: 0, width: '15px', height: '15px' }}
+                />
+                <span style={{ fontSize: '11px', color: '#9D174D', lineHeight: 1.7 }}>
+                  保護者の同意を得たうえで利用します
+                </span>
+              </label>
+            )}
+
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <button onClick={handleReset} style={{ background: 'none', border: 'none', color: '#F9A8D4', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'underline', padding: '4px 8px' }}>
-                診断方法を変える
+              <button onClick={handleReset} style={{ background: 'none', border: 'none', color: '#a8a29e', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'underline', padding: '4px 8px' }}>
+                写真を選び直す
               </button>
             </div>
           </>
         ) : (
+          /* 写真未選択 → 精密診断カード1枚 */
           <>
-            <p style={{ fontSize: '12px', color: '#C084B4', textAlign: 'center', marginBottom: '14px', letterSpacing: '0.08em', marginTop: 0 }}>
-              写真の種類を選んでください
-            </p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button disabled={disabled || processing} onClick={() => openFilePicker('precise')} style={{ flex: 1, position: 'relative', padding: '20px 14px 16px', borderRadius: '16px', border: '1.5px solid #F9A8D4', background: '#FFF0F5', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(to right, #F9A8D4, #EC4899)' }} />
-                <span style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#F9A8D4', marginBottom: '6px' }}>No. 01</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#BE185D', letterSpacing: '0.03em', marginBottom: '8px' }}>精密診断</span>
-                <div style={{ height: '1px', background: 'linear-gradient(to right, #F9A8D4, transparent)', marginBottom: '8px' }} />
-                <span style={{ fontSize: '10px', color: '#9D174D', lineHeight: 1.7 }}>全身正面・薄着で<br />足先まで撮影</span>
-              </button>
-              <button disabled={disabled || processing} onClick={() => openFilePicker('quick')} style={{ flex: 1, position: 'relative', padding: '20px 14px 16px', borderRadius: '16px', border: '1.5px solid #E9D5FF', background: '#FDF9FF', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(to right, #E9D5FF, #A855F7)' }} />
-                <span style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#C084FC', marginBottom: '6px' }}>No. 02</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#7E22CE', letterSpacing: '0.03em', marginBottom: '8px' }}>さくっと診断</span>
-                <div style={{ height: '1px', background: 'linear-gradient(to right, #E9D5FF, transparent)', marginBottom: '8px' }} />
-                <span style={{ fontSize: '10px', color: '#6B21A8', lineHeight: 1.7 }}>フォルダの写真を<br />そのまま診断</span>
-              </button>
-            </div>
+            <button
+              disabled={disabled || processing}
+              onClick={openGuide}
+              style={{ width: '100%', position: 'relative', padding: '22px 20px 18px', borderRadius: '16px', border: '1.5px solid #F9A8D4', background: '#FFF0F5', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, textAlign: 'left', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(to right, #F9A8D4, #EC4899)' }} />
+              <span style={{ fontSize: '9px', letterSpacing: '0.2em', color: '#F9A8D4', marginBottom: '6px' }}>SKELÉ — 骨格診断</span>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#BE185D', letterSpacing: '0.03em', marginBottom: '8px' }}>写真を選ぶ</span>
+              <div style={{ height: '1px', background: 'linear-gradient(to right, #F9A8D4, transparent)', marginBottom: '8px' }} />
+              <span style={{ fontSize: '11px', color: '#9D174D', lineHeight: 1.7 }}>全身正面・薄着で足先まで撮影してください</span>
+            </button>
             {processing && <p style={{ marginTop: '12px', fontSize: '12px', color: '#F9A8D4', textAlign: 'center' }}>処理中...</p>}
             <p style={{ marginTop: '12px', fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.03em' }}>
               JPEG・PNG・WebP / 最大 10MB

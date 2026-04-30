@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, incrementCounters } from '@/lib/rateLimit';
 import { analyzeBodyType } from '@/lib/analyze';
 import { supabaseAdmin } from '@/lib/supabase';
-import { ApiResponse, DiagnosisResult } from '@/types';
+import { ApiResponse, DiagnosisResult, BodyInfo } from '@/types';
 
 export const maxDuration = 30;
 
@@ -30,10 +30,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
   // ── 3. リクエストボディのパース ───────────────────────────
   let imageBase64: string;
   let mimeType: AllowedMime;
+  let bodyInfo: BodyInfo | undefined;
 
   try {
     const body = await req.json();
-    const { image } = body;
+    const { image, bodyInfo: bi } = body;
+    bodyInfo = bi ?? undefined;
 
     if (!image || typeof image !== 'string') {
       return NextResponse.json(
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
   let aiErrorCode = '';
 
   try {
-    result = await analyzeBodyType(imageBase64, mimeType);
+    result = await analyzeBodyType(imageBase64, mimeType, bodyInfo);
   } catch (err: unknown) {
     const e = err as { status?: number; message?: string };
     console.error('[Diagnose] AI analysis error — status:', e.status, '| message:', e.message);
@@ -124,6 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       image_url: imageUrl,
       result_type: result ? result.bodyType : 'error',
       result_json: result ?? { error: aiErrorMessage, code: aiErrorCode },
+      body_info: bodyInfo ?? null,
     });
   } catch (err) {
     console.error('[Diagnose] DB insert error:', err);

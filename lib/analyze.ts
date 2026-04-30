@@ -7,7 +7,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
-import { DiagnosisResult, BodyType } from '@/types';
+import { DiagnosisResult, BodyType, BodyInfo } from '@/types';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -149,12 +149,24 @@ observationsは上記STEPで実際に確認した内容を具体的に記述し�
  * @param imageBase64 base64エンコードされた画像データ（data:image/... プレフィックスなし）
  * @param mimeType 画像の MIME タイプ
  */
+function buildBodyInfoNote(info?: BodyInfo): string {
+  if (!info) return '';
+  const lines: string[] = [];
+  if (info.age)    lines.push(`年齢: ${info.age}歳`);
+  if (info.height) lines.push(`身長: ${info.height}cm`);
+  if (info.weight) lines.push(`体重: ${info.weight}kg`);
+  if (info.cup)    lines.push(`カップ数: ${info.cup}`);
+  if (lines.length === 0) return '';
+  return `\n\n## ユーザー提供の参考情報（補助的に活用すること）\n${lines.join('\n')}\n※ 身長・体重・カップ数は骨格タイプと直接連動しません。体型の大小と骨格タイプは独立した概念です。これらの情報は補助的な参考にとどめ、骨格構造の視覚的特徴を最優先に診断してください。`;
+}
+
 export async function analyzeBodyType(
   imageBase64: string,
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg'
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg',
+  bodyInfo?: BodyInfo
 ): Promise<DiagnosisResult> {
   const feedbackNote = await getFeedbackNote();
-  const systemPrompt = BASE_SYSTEM_PROMPT + feedbackNote;
+  const systemPrompt = BASE_SYSTEM_PROMPT + feedbackNote + buildBodyInfoNote(bodyInfo);
 
   let response;
   try {

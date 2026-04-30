@@ -4,15 +4,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '@/components/ImageUploader';
 import DiagnosisButton from '@/components/DiagnosisButton';
-import { ApiResponse } from '@/types';
+import { ApiResponse, BodyInfo } from '@/types';
 
 const LACE_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='5' r='3' fill='%23FCE7F3' stroke='%23F9A8D4' stroke-width='1'/%3E%3Cline x1='0' y1='5' x2='7' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3Cline x1='13' y1='5' x2='20' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3C/svg%3E")`;
 
 export default function HomePage() {
   const router = useRouter();
   const [imageData, setImageData] = useState<string | null>(null);
+  const [bodyInfo, setBodyInfo] = useState<BodyInfo>({});
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [minorBlocked, setMinorBlocked] = useState(false);
 
   const handleDiagnose = async () => {
     if (!imageData) return;
@@ -22,7 +24,7 @@ export default function HomePage() {
       const res = await fetch('/api/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData }),
+        body: JSON.stringify({ image: imageData, bodyInfo }),
       });
       const json: ApiResponse = await res.json();
       if (!json.success || !json.data) {
@@ -54,7 +56,13 @@ export default function HomePage() {
             <span className="twinkle-delay2" style={{ color: '#F9A8D4', fontSize: '12px' }}>✦</span>
           </div>
 
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '58px', fontWeight: 400, letterSpacing: '0.15em', color: '#9D174D', lineHeight: 1, margin: 0, marginBottom: '10px' }}>
+          <h1
+            onClick={() => {
+              if (!imageData) return;
+              if (window.confirm('ファイル選択後は入力内容が破棄されます。TOPに戻りますか？')) window.location.href = '/';
+            }}
+            style={{ fontFamily: 'var(--font-display)', fontSize: '58px', fontWeight: 400, letterSpacing: '0.15em', color: '#9D174D', lineHeight: 1, margin: 0, marginBottom: '10px', cursor: imageData ? 'pointer' : 'default' }}
+          >
             SKELÉ
           </h1>
 
@@ -82,7 +90,7 @@ export default function HomePage() {
           {/* lace inside card top */}
           <div style={{ position: 'absolute', top: '7px', left: '20px', right: '20px', height: '10px', backgroundImage: LACE_SVG, backgroundRepeat: 'repeat-x', backgroundPosition: 'center', opacity: 0.55 }} />
 
-          <ImageUploader onImageReady={setImageData} disabled={loading} />
+          <ImageUploader onImageReady={setImageData} onBodyInfoChange={setBodyInfo} onMinorBlock={setMinorBlocked} disabled={loading} />
 
           {errorMsg && (
             <div style={{ marginTop: '14px', padding: '12px 16px', background: '#FFF0F5', borderRadius: '12px', border: '1px solid #FCE7F3' }}>
@@ -90,7 +98,7 @@ export default function HomePage() {
             </div>
           )}
 
-          <DiagnosisButton onClick={handleDiagnose} disabled={!imageData || loading} loading={loading} />
+          <DiagnosisButton onClick={handleDiagnose} disabled={!imageData || loading || minorBlocked} loading={loading} />
 
           <p style={{ marginTop: '14px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
             アップロードされた画像はAI骨格診断の分析にのみ使用され、<br />第三者に提供されることはありません。

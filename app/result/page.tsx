@@ -48,7 +48,12 @@ export default function ResultPage() {
 
         {/* header */}
         <header style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '46px', fontWeight: 400, letterSpacing: '0.15em', color: '#9D174D', lineHeight: 1, margin: 0, marginBottom: '10px' }}>
+          <h1
+            onClick={() => {
+              if (window.confirm('入力内容が破棄されます。TOPに戻りますか？')) router.push('/');
+            }}
+            style={{ fontFamily: 'var(--font-display)', fontSize: '46px', fontWeight: 400, letterSpacing: '0.15em', color: '#9D174D', lineHeight: 1, margin: 0, marginBottom: '10px', cursor: 'pointer' }}
+          >
             SKELÉ
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>

@@ -56,17 +56,36 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOut
     image.onerror = reject;
   });
   const scale = Math.min(MAX_DIMENSION / pixelCrop.width, MAX_DIMENSION / pixelCrop.height, 1);
+  const cw = Math.round(pixelCrop.width  * scale);
+  const ch = Math.round(pixelCrop.height * scale);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(pixelCrop.width * scale);
-  canvas.height = Math.round(pixelCrop.height * scale);
+  canvas.width  = cw;
+  canvas.height = ch;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
 
-  const imgLeft = pixelCrop.x < 0 ? Math.round(-pixelCrop.x * scale) : 0;
-  const imgTop  = pixelCrop.y < 0 ? Math.round(-pixelCrop.y * scale) : 0;
-  const imgW    = Math.min(Math.round(image.naturalWidth * scale), canvas.width - imgLeft);
+  // 白で埋める（画像範囲外の余白）
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // ── Safari 互換: 負のsource座標を避けるため画像境界でクリップし
+  //    対応するdest座標にオフセットして描画する ──────────────────
+  const srcX = Math.max(0, pixelCrop.x);
+  const srcY = Math.max(0, pixelCrop.y);
+  const srcW = Math.min(image.naturalWidth,  pixelCrop.x + pixelCrop.width)  - srcX;
+  const srcH = Math.min(image.naturalHeight, pixelCrop.y + pixelCrop.height) - srcY;
+
+  if (srcW > 0 && srcH > 0) {
+    const dstX = (srcX - pixelCrop.x) / pixelCrop.width  * cw;
+    const dstY = (srcY - pixelCrop.y) / pixelCrop.height * ch;
+    const dstW = srcW / pixelCrop.width  * cw;
+    const dstH = srcH / pixelCrop.height * ch;
+    ctx.drawImage(image, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH);
+  }
+
+  // 顔マスク位置計算用: キャンバス内の画像開始点と幅
+  const imgLeft = Math.round((srcX - pixelCrop.x) / pixelCrop.width  * cw);
+  const imgTop  = Math.round((srcY - pixelCrop.y) / pixelCrop.height * ch);
+  const imgW    = Math.round(srcW / pixelCrop.width * cw);
 
   return { dataUrl: canvas.toDataURL('image/jpeg', JPEG_QUALITY), imgLeft, imgTop, imgW };
 }

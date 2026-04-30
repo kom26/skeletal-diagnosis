@@ -122,7 +122,12 @@ const GUIDES = [
 export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorBlock, disabled }: Props) {
   const inputRef  = useRef<HTMLInputElement>(null);
   const [showGuide, setShowGuide] = useState(false);
-  const [bodyInfo, setBodyInfo] = useState<BodyInfo>({});
+  const [bodyInfo, setBodyInfo] = useState<BodyInfo>(() => {
+    try {
+      const saved = localStorage.getItem('bodyInfo');
+      return saved ? (JSON.parse(saved) as BodyInfo) : {};
+    } catch { return {}; }
+  });
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [crop, setCrop]     = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom]     = useState(1);
@@ -227,16 +232,15 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
 
   const handleReset = () => {
     setPreview(null);
-    setBodyInfo({});
-    setParentalConsent(false);
     onImageReady('');
-    onBodyInfoChange({});
+    onBodyInfoChange(bodyInfo);
   };
 
   const updateBodyInfo = (patch: Partial<BodyInfo>) => {
     const next = { ...bodyInfo, ...patch };
     setBodyInfo(next);
     onBodyInfoChange(next);
+    localStorage.setItem('bodyInfo', JSON.stringify(next));
   };
 
   useEffect(() => {

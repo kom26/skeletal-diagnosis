@@ -293,9 +293,12 @@ export default function AdminPage() {
                   </p>
                   {selected.result_json && 'confidence' in selected.result_json && (() => {
                     const rj = selected.result_json as import('@/types').DiagnosisResult;
+                    const rawC = rj.confidence as unknown;
+                    const confLabel = typeof rawC === 'number' ? `${rawC}%`
+                      : rawC === 'high' ? '高' : rawC === 'medium' ? '中' : '低';
                     return (
                       <p style={{ fontSize: '12px', color: '#78716c', margin: 0 }}>
-                        確信度: {rj.confidence === 'high' ? '高' : rj.confidence === 'medium' ? '中' : '低'}
+                        確信度: {confLabel}
                         　IP: {selected.ip_address}
                       </p>
                     );

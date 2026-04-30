@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { DiagnosisResult, BodyType } from '@/types';
 
 const TYPE_META: Record<BodyType, {
@@ -37,11 +36,7 @@ const TYPE_META: Record<BodyType, {
   },
 };
 
-const CONFIDENCE_CONFIG: Record<string, { label: string; filled: number; pct: string }> = {
-  high:   { label: '高い',   filled: 3, pct: '90%以上' },
-  medium: { label: 'やや高い', filled: 2, pct: '70%程度' },
-  low:    { label: '参考値',  filled: 1, pct: '50%程度' },
-};
+const ALL_TYPES: BodyType[] = ['straight', 'wave', 'natural'];
 
 interface Props {
   result: DiagnosisResult;
@@ -50,12 +45,17 @@ interface Props {
 
 export default function ResultCard({ result, onRetry }: Props) {
   const meta = TYPE_META[result.bodyType];
-  const conf = CONFIDENCE_CONFIG[result.confidence] ?? CONFIDENCE_CONFIG.medium;
-  const [showOthers, setShowOthers] = useState(false);
 
-  const otherTypes = (['straight', 'wave', 'natural'] as BodyType[])
-    .filter((t) => t !== result.bodyType)
-    .sort((a, b) => (result.scores?.[b] ?? 0) - (result.scores?.[a] ?? 0));
+  // confidence は 65-100 の数値（旧データの文字列にもフォールバック）
+  const rawConf = result.confidence as unknown;
+  const confidencePct: number =
+    typeof rawConf === 'number' ? rawConf
+    : rawConf === 'high' ? 90 : rawConf === 'medium' ? 75 : 65;
+
+  // スコアを降順ソート（常に3タイプ表示）
+  const sortedTypes = [...ALL_TYPES].sort(
+    (a, b) => (result.scores?.[b] ?? 0) - (result.scores?.[a] ?? 0)
+  );
 
   return (
     <div style={{ width: '100%' }}>
@@ -63,12 +63,10 @@ export default function ResultCard({ result, onRetry }: Props) {
       {/* ── タイプバナー ── */}
       <div style={{ background: meta.bg, borderRadius: '18px', padding: '24px 20px 20px', marginBottom: '20px', border: `1px solid ${meta.accentColor}30` }}>
 
-        {/* ラベル */}
         <p style={{ fontSize: '11px', letterSpacing: '0.2em', color: meta.accentColor, marginBottom: '8px', marginTop: 0 }}>
           ✦ Diagnosis Result ✦
         </p>
 
-        {/* タイプ名 */}
         <h2 style={{ fontSize: '28px', fontWeight: 700, color: meta.titleColor, letterSpacing: '0.05em', lineHeight: 1.2, margin: '0 0 6px' }}>
           {meta.label}
         </h2>
@@ -76,58 +74,52 @@ export default function ResultCard({ result, onRetry }: Props) {
           {meta.tagline}
         </p>
 
-        {/* 区切り線 */}
         <div style={{ height: '1px', background: `linear-gradient(to right, ${meta.accentColor}60, transparent)`, marginBottom: '16px' }} />
 
-        {/* 信頼度 + メインスコア */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: result.scores ? '14px' : '0' }}>
-          <p style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.6, margin: 0, letterSpacing: '0.08em' }}>AI判定の信頼度</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ display: 'flex', gap: '5px' }}>
-              {[1, 2, 3].map(n => (
-                <div key={n} style={{ width: '10px', height: '10px', borderRadius: '50%', background: n <= conf.filled ? meta.accentColor : `${meta.accentColor}30` }} />
-              ))}
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: meta.titleColor }}>{conf.label}</span>
-              {result.scores && (
-                <span style={{ fontSize: '13px', fontWeight: 700, color: meta.accentColor, marginLeft: '8px' }}>
-                  {result.scores[result.bodyType]}%
-                </span>
-              )}
-            </div>
+        {/* 信頼度バー */}
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.6, letterSpacing: '0.08em' }}>AI判定の信頼度</span>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: meta.accentColor }}>{confidencePct}%</span>
+          </div>
+          {/* バーは 65-100 の範囲を表示（65%を0%起点として視覚化） */}
+          <div style={{ height: '6px', borderRadius: '99px', background: `${meta.accentColor}20`, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${((confidencePct - 65) / 35) * 100}%`,
+              background: `linear-gradient(to right, ${meta.accentColor}80, ${meta.accentColor})`,
+              borderRadius: '99px',
+              transition: 'width 0.6s ease',
+            }} />
           </div>
         </div>
 
-        {/* 他のタイプのスコアバー（折りたたみ） */}
+        {/* 3タイプのスコアバー（常に表示・降順） */}
         {result.scores && (
-          <>
-            <button
-              onClick={() => setShowOthers((v) => !v)}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '11px', color: meta.accentColor, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              他の可能性を見る {showOthers ? '▲' : '▼'}
-            </button>
-            {showOthers && (
-              <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {otherTypes.map((t) => {
-                  const m = TYPE_META[t];
-                  const pct = result.scores?.[t] ?? 0;
-                  return (
-                    <div key={t}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '11px', color: m.titleColor, fontWeight: 600 }}>{m.label}</span>
-                        <span style={{ fontSize: '11px', color: m.titleColor }}>{pct}%</span>
-                      </div>
-                      <div style={{ height: '6px', borderRadius: '99px', background: `${m.accentColor}20`, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: m.accentColor, borderRadius: '99px', transition: 'width 0.6s ease' }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {sortedTypes.map((t) => {
+              const m = TYPE_META[t];
+              const pct = result.scores?.[t] ?? 0;
+              const isTop = t === result.bodyType;
+              return (
+                <div key={t}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '11px', color: m.titleColor, fontWeight: isTop ? 700 : 500, opacity: isTop ? 1 : 0.65 }}>{m.label}</span>
+                    <span style={{ fontSize: '11px', color: m.titleColor, fontWeight: isTop ? 700 : 400, opacity: isTop ? 1 : 0.65 }}>{pct}%</span>
+                  </div>
+                  <div style={{ height: '6px', borderRadius: '99px', background: `${m.accentColor}20`, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${pct}%`,
+                      background: isTop ? m.accentColor : `${m.accentColor}60`,
+                      borderRadius: '99px',
+                      transition: 'width 0.6s ease',
+                    }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 

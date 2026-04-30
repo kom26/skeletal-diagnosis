@@ -117,8 +117,19 @@ export default function HomePage() {
           <ImageUploader onImageReady={setImageData} onBodyInfoChange={setBodyInfo} onMinorBlock={setMinorBlocked} disabled={loading} />
 
           {errorMsg && (
-            <div style={{ marginTop: '14px', padding: '12px 16px', background: '#FFF0F5', borderRadius: '12px', border: '1px solid #FCE7F3' }}>
-              <p style={{ color: '#BE185D', fontSize: '13px', textAlign: 'center', lineHeight: 1.6 }}>{errorMsg}</p>
+            <div style={{ marginTop: '14px', padding: '16px', background: '#FFF0F5', borderRadius: '14px', border: '1.5px solid #F9A8D4' }}>
+              <p style={{ color: '#BE185D', fontSize: '13px', fontWeight: 700, marginBottom: errorMsg.includes('\n') ? '10px' : 0, lineHeight: 1.6 }}>
+                {errorMsg.split('\n')[0]}
+              </p>
+              {errorMsg.includes('\n') && (
+                <ul style={{ margin: 0, padding: '0 0 0 4px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {errorMsg.split('\n').slice(1).map((line, i) => (
+                    <li key={i} style={{ fontSize: '12px', color: '#9D174D', lineHeight: 1.7, display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                      <span style={{ color: '#F9A8D4', flexShrink: 0 }}>•</span>{line.replace(/^・/, '')}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 

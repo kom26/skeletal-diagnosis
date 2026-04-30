@@ -93,7 +93,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       aiErrorMessage = 'AI サービスが混み合っています。少し時間を置いてから再度お試しください。';
       aiErrorCode = 'RATE_LIMIT';
     } else if (e.message?.startsWith('NO_JSON:')) {
-      aiErrorMessage = '画像を分析できませんでした。全身が映った写真をお試しください。';
+      aiErrorMessage = '画像を分析できませんでした。以下をお試しください。\n・全身が映った正面の写真\n・体のラインがわかる服装（過度な露出は除く）\n・明るく鮮明な写真';
       aiErrorCode = 'CONTENT_POLICY';
     } else {
       aiErrorMessage = 'AI 分析中にエラーが発生しました。しばらくしてから再度お試しください。';
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       image_url: imageUrl,
       result_type: result ? result.bodyType : 'error',
       result_json: result ?? { error: aiErrorMessage, code: aiErrorCode },
-      body_info: bodyInfo ?? null,
+      body_info: (bodyInfo && Object.keys(bodyInfo).length > 0) ? bodyInfo : null,
     });
   } catch (err) {
     console.error('[Diagnose] DB insert error:', err);

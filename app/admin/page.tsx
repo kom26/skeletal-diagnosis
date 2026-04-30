@@ -304,7 +304,24 @@ export default function AdminPage() {
                   <p style={{ fontSize: '12px', color: '#9ca3af', margin: '0 0 6px', letterSpacing: '0.05em' }}>AI診断結果</p>
                   <p style={{ fontSize: '16px', fontWeight: 700, color: '#dc2626', margin: '0 0 6px' }}>AI エラー</p>
                   {getErrorDetail(selected) && <p style={{ fontSize: '11px', color: '#ef4444', margin: '0 0 4px' }}>コード: {getErrorDetail(selected)!.code}</p>}
-                  {getErrorDetail(selected) && <p style={{ fontSize: '11px', color: '#78716c', margin: 0 }}>{getErrorDetail(selected)!.error}</p>}
+                  {getErrorDetail(selected) && (() => {
+                    const msg = getErrorDetail(selected)!.error;
+                    const lines = msg.split('\n');
+                    return (
+                      <div style={{ margin: 0 }}>
+                        <p style={{ fontSize: '11px', color: '#78716c', margin: lines.length > 1 ? '0 0 6px' : 0 }}>{lines[0]}</p>
+                        {lines.length > 1 && (
+                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {lines.slice(1).map((line, i) => (
+                              <li key={i} style={{ fontSize: '11px', color: '#78716c', display: 'flex', gap: '5px' }}>
+                                <span style={{ color: '#fca5a5', flexShrink: 0 }}>•</span>{line.replace(/^・/, '')}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <p style={{ fontSize: '11px', color: '#a8a29e', marginTop: '6px', marginBottom: 0 }}>IP: {selected.ip_address}</p>
                 </div>
 

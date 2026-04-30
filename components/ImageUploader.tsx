@@ -266,8 +266,8 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
   };
 
   const handleGuideConfirm = () => {
-    inputRef.current?.click(); // ユーザージェスチャー内で先に呼ぶ（iOS Safari対応）
-    setShowGuide(false);
+    inputRef.current?.click(); // ユーザージェスチャー内で呼ぶ（iOS Safari対応）
+    // ガイドは写真選択確定後に閉じる（onChange側で制御）
   };
 
   // ── 単一 return（input は常時DOMに存在させる）────────────
@@ -285,6 +285,7 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           const file = e.target.files?.[0];
           e.target.value = '';
           if (!file) return;
+          setShowGuide(false); // 写真が選ばれた時点でガイドを閉じる
           if (modeRef.current === 'precise') {
             handleFilePrecise(file);
           } else {

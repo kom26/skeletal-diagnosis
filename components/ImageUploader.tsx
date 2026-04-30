@@ -132,9 +132,43 @@ const GUIDES = [
   { label: '股下', top: '56%' },
 ];
 
+function BodyGuideSVG() {
+  const accent = '#EC4899';
+  const bodyFill = '#FFD6E8';
+  return (
+    <svg viewBox="0 0 100 240" style={{ width: '100%', display: 'block' }}>
+      {/* Head - dark mask */}
+      <circle cx="50" cy="18" r="14" fill="#1c1917" opacity="0.82" />
+      {/* Neck */}
+      <rect x="45" y="31" width="10" height="9" rx="2" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
+      {/* Upper body */}
+      <polygon points="22,42 78,42 68,105 32,105" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
+      {/* Left arm */}
+      <line x1="22" y1="44" x2="12" y2="98" stroke={accent} strokeWidth="7" strokeLinecap="round" />
+      {/* Right arm */}
+      <line x1="78" y1="44" x2="88" y2="98" stroke={accent} strokeWidth="7" strokeLinecap="round" />
+      {/* Hips */}
+      <polygon points="32,105 68,105 72,122 28,122" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
+      {/* Left leg */}
+      <rect x="28" y="122" width="18" height="72" rx="3" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
+      {/* Right leg */}
+      <rect x="54" y="122" width="18" height="72" rx="3" fill={bodyFill} stroke={accent} strokeWidth="0.9" />
+      {/* Landmark dots */}
+      <circle cx="50" cy="40" r="2.8" fill={accent} />   {/* 首の付け根 */}
+      <circle cx="65" cy="48" r="2.2" fill={accent} />   {/* 鎖骨 */}
+      <circle cx="35" cy="48" r="2.2" fill={accent} />
+      <circle cx="67" cy="105" r="2.5" fill={accent} />  {/* ウエスト */}
+      <circle cx="71" cy="118" r="2.5" fill={accent} />  {/* ヒップ */}
+      <circle cx="13" cy="99" r="2.5" fill={accent} />   {/* 手首 */}
+      <circle cx="63" cy="193" r="2.5" fill={accent} />  {/* 膝 */}
+    </svg>
+  );
+}
+
 export default function ImageUploader({ onImageReady, disabled }: Props) {
   const inputRef  = useRef<HTMLInputElement>(null);
   const modeRef   = useRef<Mode>('quick');
+  const [showGuide, setShowGuide] = useState(false);
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [crop, setCrop]     = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom]     = useState(1);
@@ -256,8 +290,89 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
   const openFilePicker = (m: Mode) => {
     if (disabled) return;
     modeRef.current = m;
+    if (m === 'precise') {
+      setShowGuide(true);
+    } else {
+      inputRef.current?.click();
+    }
+  };
+
+  const handleGuideConfirm = () => {
+    setShowGuide(false);
     inputRef.current?.click();
   };
+
+  // ── 撮影ガイド画面（精密診断のみ）────────────────────────
+  if (showGuide) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9997, background: '#fff', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+
+        {/* ヘッダー */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 2, background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(8px)', borderBottom: '1px solid #FCE7F3', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '10px', letterSpacing: '0.2em', color: '#F9A8D4' }}>No. 01 — 精密診断</p>
+            <h2 style={{ margin: '2px 0 0', fontSize: '18px', fontWeight: 700, color: '#9D174D', letterSpacing: '0.05em' }}>撮影ガイド</h2>
+          </div>
+          <button onClick={() => setShowGuide(false)} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#a8a29e', cursor: 'pointer', lineHeight: 1, padding: '4px' }}>×</button>
+        </div>
+
+        {/* コンテンツ */}
+        <div style={{ padding: '20px 20px 40px' }}>
+
+          {/* イラスト + チェックリスト */}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', background: '#FFF0F5', borderRadius: '16px', padding: '16px', marginBottom: '16px', border: '1px solid #FCE7F3' }}>
+            <div style={{ flexShrink: 0, width: '90px' }}>
+              <BodyGuideSVG />
+            </div>
+            <div style={{ flex: 1, paddingTop: '4px' }}>
+              <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#EC4899' }}>以下が写っているか確認</p>
+              {['首・首の付け根', '鎖骨', 'ウエスト', 'ヒップ', '手首', '膝'].map((item) => (
+                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
+                  <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: '#EC4899', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ color: '#fff', fontSize: '9px', lineHeight: 1 }}>✓</span>
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#9D174D', fontWeight: 500 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 推奨服装 */}
+          <div style={{ background: '#FFF5F8', borderRadius: '14px', padding: '14px 16px', marginBottom: '12px', border: '1px solid #FCE7F3' }}>
+            <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#EC4899' }}>推奨服装</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#7C3654', lineHeight: 1.85 }}>
+              水着・ヨガウェア・タイトなキャミソール等、<strong>体のラインがわかる服装</strong>ほど診断精度が上がります。
+            </p>
+          </div>
+
+          {/* 注意事項 */}
+          <div style={{ background: '#FFFBEB', borderRadius: '14px', padding: '14px 16px', marginBottom: '12px', border: '1px solid #FEF3C7' }}>
+            <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#D97706' }}>ご注意</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#78350F', lineHeight: 1.85 }}>
+              過度な露出がある画像はAIが適切に判定できない場合があります。正面・全身が写っていることを確認してください。
+            </p>
+          </div>
+
+          {/* 年齢 */}
+          <div style={{ background: '#F0FDF4', borderRadius: '14px', padding: '14px 16px', marginBottom: '24px', border: '1px solid #DCFCE7' }}>
+            <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#16A34A' }}>ご利用年齢について</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#14532D', lineHeight: 1.85 }}>
+              骨格が安定する<strong>18歳以上の方に向けたサービス</strong>です。18歳未満の方がご利用になる場合は、保護者の同意を得た上でご使用ください。
+            </p>
+          </div>
+
+          {/* 写真を選ぶボタン */}
+          <button
+            onClick={handleGuideConfirm}
+            style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #F472B6, #EC4899)', color: '#fff', border: 'none', borderRadius: '50px', fontSize: '14px', fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', boxShadow: '0 4px 20px rgba(236,72,153,0.3)' }}
+          >
+            写真を選ぶ
+          </button>
+
+        </div>
+      </div>
+    );
+  }
 
   // ── クロップ画面（精密診断のみ）──────────────────────────
   if (rawImage) {

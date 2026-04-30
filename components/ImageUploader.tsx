@@ -288,12 +288,12 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
         <div style={{ padding: '20px 20px 40px' }}>
 
           {/* イラスト + チェックリスト */}
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', background: '#FFF0F5', borderRadius: '16px', padding: '16px', marginBottom: '16px', border: '1px solid #FCE7F3' }}>
-            <div style={{ flexShrink: 0, width: '110px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', background: '#FFF0F5', borderRadius: '16px', padding: '16px', marginBottom: '16px', border: '1px solid #FCE7F3' }}>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'stretch' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/guide-body.png" alt="骨格診断撮影ガイド" style={{ width: '100%', display: 'block', borderRadius: '8px' }} />
+              <img src="/guide-body.png" alt="骨格診断撮影ガイド" style={{ height: '100%', width: 'auto', maxWidth: '130px', display: 'block', borderRadius: '8px', objectFit: 'contain' }} />
             </div>
-            <div style={{ flex: 1, paddingTop: '4px' }}>
+            <div style={{ flex: 1, paddingTop: '4px', paddingLeft: '4px' }}>
               <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#EC4899' }}>以下が写っているか確認</p>
               {['首・首の付け根', '鎖骨', 'ウエスト', 'ヒップ', '手首', '膝'].map((item) => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
@@ -339,7 +339,7 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           </button>
 
           <p style={{ marginTop: '16px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
-            アップロードされた画像はAI骨格診断の分析にのみ使用されます。<br />第三者への提供・共有は一切行いません。
+            アップロードされた画像はAI骨格診断の分析にのみ使用されます。<br />第三者に提供されることはありません。
           </p>
 
         </div>
@@ -600,9 +600,6 @@ export default function ImageUploader({ onImageReady, disabled }: Props) {
           )}
           <p style={{ marginTop: '12px', fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.03em' }}>
             JPEG・PNG・WebP / 最大 10MB
-          </p>
-          <p style={{ marginTop: '10px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
-            アップロードされた画像はAI骨格診断の分析にのみ使用されます。<br />第三者への提供・共有は一切行いません。
           </p>
         </>
       )}

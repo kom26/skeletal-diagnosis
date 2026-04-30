@@ -136,6 +136,12 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
   const footerRef = useRef<HTMLDivElement>(null);
   const [cropperBounds, setCropperBounds] = useState({ top: 60, bottom: 44 });
 
+  // ガイド画像をマウント時にプリロード
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/guide-body.png';
+  }, []);
+
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
   }, []);

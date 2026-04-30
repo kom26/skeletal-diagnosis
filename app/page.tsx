@@ -1,12 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '@/components/ImageUploader';
 import DiagnosisButton from '@/components/DiagnosisButton';
 import { ApiResponse, BodyInfo } from '@/types';
 
 const LACE_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='5' r='3' fill='%23FCE7F3' stroke='%23F9A8D4' stroke-width='1'/%3E%3Cline x1='0' y1='5' x2='7' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3Cline x1='13' y1='5' x2='20' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3C/svg%3E")`;
+
+const LOADING_STEPS = [
+  { label: '画像をアップロード中...', sub: 'しばらくお待ちください' },
+  { label: '骨格の特徴を読み取っています...', sub: '鎖骨・膝・重心バランスを解析中' },
+  { label: '骨格タイプを判定しています...', sub: 'ストレート・ウェーブ・ナチュラルを比較中' },
+  { label: '診断結果を生成中...', sub: 'もうすぐ完了します' },
+];
+
+const STEP_DURATIONS = [3000, 7000, 8000, Infinity];
 
 export default function HomePage() {
   const router = useRouter();
@@ -15,6 +24,23 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [minorBlocked, setMinorBlocked] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  useEffect(() => {
+    if (!loading) { setLoadingStep(0); return; }
+    let step = 0;
+    const advance = () => {
+      step++;
+      if (step < LOADING_STEPS.length - 1) {
+        setLoadingStep(step);
+        timer = setTimeout(advance, STEP_DURATIONS[step]);
+      } else {
+        setLoadingStep(LOADING_STEPS.length - 1);
+      }
+    };
+    let timer = setTimeout(advance, STEP_DURATIONS[0]);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const handleDiagnose = async () => {
     if (!imageData) return;
@@ -66,7 +92,6 @@ export default function HomePage() {
             SKELÉ
           </h1>
 
-          {/* elegant divider */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
             <div style={{ width: '48px', height: '1px', background: 'linear-gradient(to right, transparent, #F9A8D4)' }} />
             <span style={{ color: '#F9A8D4', fontSize: '14px', lineHeight: 1 }}>♡</span>
@@ -87,7 +112,6 @@ export default function HomePage() {
           boxShadow: '0 2px 20px rgba(236,72,153,0.07), 0 0 0 5px rgba(252,231,243,0.5)',
           position: 'relative',
         }}>
-          {/* lace inside card top */}
           <div style={{ position: 'absolute', top: '7px', left: '20px', right: '20px', height: '10px', backgroundImage: LACE_SVG, backgroundRepeat: 'repeat-x', backgroundPosition: 'center', opacity: 0.55 }} />
 
           <ImageUploader onImageReady={setImageData} onBodyInfoChange={setBodyInfo} onMinorBlock={setMinorBlocked} disabled={loading} />
@@ -113,6 +137,51 @@ export default function HomePage() {
       </div>
 
       <div style={{ height: '10px', backgroundImage: LACE_SVG, backgroundRepeat: 'repeat-x', backgroundPosition: 'center' }} />
+
+      {/* ── 診断中オーバーレイ ── */}
+      {loading && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'linear-gradient(160deg, #FFF0F5 0%, #FDF6F9 55%, #FFF7FA 100%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '40px 32px',
+        }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '36px', fontWeight: 400, letterSpacing: '0.15em', color: '#9D174D', marginBottom: '32px' }}>SKELÉ</p>
+
+          {/* スピナー */}
+          <div style={{ position: 'relative', width: '64px', height: '64px', marginBottom: '32px' }}>
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid #FCE7F3' }} />
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid transparent', borderTopColor: '#EC4899', animation: 'spin 1s linear infinite' }} />
+            <div style={{ position: 'absolute', inset: '10px', borderRadius: '50%', border: '1.5px solid transparent', borderTopColor: '#F9A8D4', animation: 'spin 1.6s linear infinite reverse' }} />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F9A8D4', fontSize: '18px' }}>♡</div>
+          </div>
+
+          {/* ステップメッセージ */}
+          <p style={{ fontSize: '16px', fontWeight: 600, color: '#BE185D', letterSpacing: '0.03em', textAlign: 'center', marginBottom: '8px', transition: 'opacity 0.4s' }}>
+            {LOADING_STEPS[loadingStep].label}
+          </p>
+          <p style={{ fontSize: '12px', color: '#F9A8D4', letterSpacing: '0.05em', textAlign: 'center', marginBottom: '36px' }}>
+            {LOADING_STEPS[loadingStep].sub}
+          </p>
+
+          {/* ステップインジケーター */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {LOADING_STEPS.map((_, i) => (
+              <div key={i} style={{
+                width: i === loadingStep ? '24px' : '8px',
+                height: '8px',
+                borderRadius: '99px',
+                background: i <= loadingStep ? '#EC4899' : '#FCE7F3',
+                transition: 'all 0.4s ease',
+              }} />
+            ))}
+          </div>
+
+          <p style={{ marginTop: '40px', fontSize: '11px', color: '#FBCFE8', letterSpacing: '0.08em' }}>
+            通常20〜30秒かかります
+          </p>
+        </div>
+      )}
     </main>
   );
 }

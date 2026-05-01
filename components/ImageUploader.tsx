@@ -100,7 +100,8 @@ async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise
 
 
 const GUIDES = [
-  { label: '股下', top: '56%' },
+  { label: 'あご', top: '21%' },
+  { label: 'へそ', top: '46%' },
 ];
 
 
@@ -329,8 +330,8 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
               </button>
             </div>
             <p style={{ color: '#ffffff', fontSize: '12px', textAlign: 'center', paddingBottom: '12px', paddingLeft: '16px', paddingRight: '16px', letterSpacing: '0.05em', lineHeight: '1.7' }}>
-              股下をラインに合わせ、顔を○の中に収めてください<br />
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px' }}>首は円の外に出すとより正確に診断できます</span>
+              「あご」と「へそ」をラインに合わせてください<br />
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px' }}>〇の内側はプライバシー保護のため塗りつぶされて分析に使用されます</span>
             </p>
           </div>
           <div style={{ position: 'absolute', top: cropperBounds.top, bottom: cropperBounds.bottom, left: 0, right: 0 }}>
@@ -355,10 +356,9 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
             <div style={{ position: 'fixed', top: overlayRect.top, left: overlayRect.left, width: overlayRect.width, height: overlayRect.height, zIndex: 100, pointerEvents: 'none' }}>
               <div style={{ position: 'absolute', top: '0%', left: '50%', transform: 'translateX(-50%)', width: '28%', paddingBottom: '28%', height: 0, backgroundColor: 'rgba(8,6,6,0.80)', borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.35)' }} />
               {GUIDES.map(({ label, top }) => (
-                <div key={label} style={{ position: 'absolute', top, left: '4%', right: '4%', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div key={label} style={{ position: 'absolute', top, left: '4%', right: '4%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ flex: 1, borderTop: '2px dashed rgba(255,70,70,0.85)' }} />
-                  <span style={{ color: 'rgba(255,110,110,1)', fontSize: '12px', whiteSpace: 'nowrap', fontWeight: 600 }}>{label}</span>
-                  <div style={{ flex: 1, borderTop: '2px dashed rgba(255,70,70,0.85)' }} />
+                  <span style={{ color: 'rgba(255,110,110,1)', fontSize: '12px', whiteSpace: 'nowrap', fontWeight: 600, lineHeight: 1 }}>{label}</span>
                 </div>
               ))}
             </div>

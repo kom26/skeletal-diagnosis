@@ -16,9 +16,18 @@ export default function MonitorGate({ children }: Props) {
   useEffect(() => {
     if (!MONITOR_MODE) { setStatus('ok'); return; }
 
-    // ?token= は既存セッションより優先して検証（別URLでの再入場に対応）
     const token = new URLSearchParams(window.location.search).get('token');
-    if (token) { validate(token, true); return; }
+    if (token) {
+      const session = getSession();
+      // 同じトークンで既にセッション確立済みなら再検証不要（2回目アクセス対応）
+      if (session && session.code === token.toUpperCase().trim()) {
+        setStatus('ok');
+        return;
+      }
+      // 別のトークン or 未セッション → 検証
+      validate(token, true);
+      return;
+    }
 
     if (getSession()) { setStatus('ok'); return; }
 

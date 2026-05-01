@@ -439,10 +439,10 @@ export default function AdminPage() {
           <div
             ref={modalRef}
             onClick={(e) => e.stopPropagation()}
-            style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', maxHeight: '92vh', overflowY: 'auto', padding: '0 0 40px' }}
+            style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
           >
-            {/* モーダルヘッダー（sticky） */}
-            <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderRadius: '20px 20px 0 0', padding: '20px 20px 12px', borderBottom: '1px solid #f5f5f4', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            {/* モーダルヘッダー（常時表示） */}
+            <div style={{ flexShrink: 0, background: '#fff', borderRadius: '20px 20px 0 0', padding: '20px 20px 12px', borderBottom: '1px solid #f5f5f4', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '12px', color: '#a8a29e' }}>{new Date(selected.created_at).toLocaleString('ja-JP')}</span>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
@@ -457,7 +457,7 @@ export default function AdminPage() {
             </div>
 
             {/* スクロール可能コンテンツ */}
-            <div style={{ padding: '0 20px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 40px' }}>
 
             {/* 画像 */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>

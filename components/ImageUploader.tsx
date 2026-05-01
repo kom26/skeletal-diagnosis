@@ -20,25 +20,34 @@ interface CropOutput {
   imgTop: number;
 }
 
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  const image = new Image();
+  await new Promise<void>((resolve, reject) => {
+    // データURLはすでに同期ロード済みの場合があるので complete を先に確認
+    image.onload = () => resolve();
+    image.onerror = reject;
+    image.src = src;
+    if (image.complete && image.naturalWidth > 0) resolve();
+  });
+  return image;
+}
+
 async function applyFaceMask(
   imageSrc: string,
   imgTop: number,
 ): Promise<string> {
-  const image = new Image();
-  image.src = imageSrc;
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = reject;
-  });
+  const image = await loadImage(imageSrc);
+  const w = image.naturalWidth;
+  const h = image.naturalHeight;
   const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(image, 0, 0);
   // r・cx はキャンバス幅基準（クロップ枠の overlay 円と同サイズ）
   // cy は imgTop（画像コンテンツ上端）から r 分下 — ズームアウト時も画像内に収まる
-  const r  = image.width * 0.14;
-  const cx = image.width / 2;
+  const r  = w * 0.14;
+  const cx = w / 2;
   const cy = imgTop + r;
   ctx.fillStyle = '#080606';
   ctx.beginPath();
@@ -48,12 +57,7 @@ async function applyFaceMask(
 }
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOutput> {
-  const image = new Image();
-  image.src = imageSrc;
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = reject;
-  });
+  const image = await loadImage(imageSrc);
   const scale = Math.min(MAX_DIMENSION / pixelCrop.width, MAX_DIMENSION / pixelCrop.height, 1);
   const cw = Math.round(pixelCrop.width  * scale);
   const ch = Math.round(pixelCrop.height * scale);
@@ -88,12 +92,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOut
 }
 
 async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise<string> {
-  const image = new Image();
-  image.src = imageSrc;
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = reject;
-  });
+  const image = await loadImage(imageSrc);
   const mx = pixelCrop.width * 0.05;
   const my = pixelCrop.height * 0.05;
   const sx = Math.max(0, pixelCrop.x - mx);

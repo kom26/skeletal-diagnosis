@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DiagnosisLog, DiagnosisErrorLog } from '@/types';
 
 type LogWithImage = DiagnosisLog & { signed_url: string | null };
@@ -49,10 +49,23 @@ function StatusBadge({ log }: { log: LogWithImage }) {
   return <span style={{ background: 'rgba(234,88,12,0.85)', color: '#fff', fontSize: '10px', padding: '2px 7px', borderRadius: '99px' }}>→ {TYPE_LABELS[log.admin_feedback] ?? log.admin_feedback}</span>;
 }
 
+interface MonitorCode {
+  id: string;
+  code: string;
+  type: 'invite' | 'url';
+  max_uses: number;
+  used_count: number;
+  child_invites: number;
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+}
+
 export default function AdminPage() {
   const [key, setKey]           = useState('');
   const [adminKey, setAdminKey] = useState('');
   const [authed, setAuthed]     = useState(false);
+  const [tab, setTab]           = useState<'logs' | 'monitor'>('logs');
   const [logs, setLogs]         = useState<LogWithImage[]>([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
@@ -60,11 +73,24 @@ export default function AdminPage() {
   const [selectMode, setSelectMode]   = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // モニターコード管理
+  const [monitorCodes, setMonitorCodes]         = useState<MonitorCode[]>([]);
+  const [monitorLoading, setMonitorLoading]     = useState(false);
+  const [mcType, setMcType]                     = useState<'invite' | 'url'>('invite');
+  const [mcChildInvites, setMcChildInvites]     = useState(3);
+  const [mcMaxUses, setMcMaxUses]               = useState(3);
+  const [mcQuantity, setMcQuantity]             = useState(1);
+  const [mcGenerating, setMcGenerating]         = useState(false);
+  const [mcCopied, setMcCopied]                 = useState<string | null>(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { if (authed) window.scrollTo(0, 0); }, [authed]);
 
   useEffect(() => {
     document.body.style.overflow = selected ? 'hidden' : '';
+    if (selected) modalRef.current?.scrollTo(0, 0);
     return () => { document.body.style.overflow = ''; };
   }, [selected]);
 
@@ -73,6 +99,13 @@ export default function AdminPage() {
     if (!res.ok) return null;
     const data = await res.json();
     return data.logs as LogWithImage[];
+  };
+
+  const fetchMonitorCodes = async (k: string) => {
+    const res = await fetch('/api/admin/monitor', { headers: { 'x-admin-key': k } });
+    if (!res.ok) return;
+    const data = await res.json();
+    setMonitorCodes(data.items ?? []);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -86,6 +119,35 @@ export default function AdminPage() {
     setAuthed(true);
     setLoading(false);
   };
+
+  const handleGenerateMonitorCode = async () => {
+    setMcGenerating(true);
+    try {
+      const body = mcType === 'invite'
+        ? { type: 'invite', childInvites: mcChildInvites, quantity: mcQuantity }
+        : { type: 'url', childInvites: mcChildInvites, maxUses: mcMaxUses };
+      const res = await fetch('/api/admin/monitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (json.error) { alert(json.error); return; }
+      await fetchMonitorCodes(adminKey);
+    } catch {
+      alert('発行に失敗しました');
+    } finally {
+      setMcGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authed && tab === 'monitor' && monitorCodes.length === 0) {
+      setMonitorLoading(true);
+      fetchMonitorCodes(adminKey).finally(() => setMonitorLoading(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, tab]);
 
   const handleFeedback = async (id: string, feedback: string) => {
     await fetch('/api/admin/logs', {
@@ -156,6 +218,130 @@ export default function AdminPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#f5f5f4', padding: '16px 16px 80px' }}>
       <div style={{ maxWidth: '720px', margin: '0 auto' }}>
+
+        {/* タブ */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          {(['logs', 'monitor'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} style={{ padding: '7px 18px', borderRadius: '99px', border: '1px solid #d6d3d1', background: tab === t ? '#1c1917' : '#fff', color: tab === t ? '#fff' : '#1c1917', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+              {t === 'logs' ? '診断ログ' : 'モニター'}
+            </button>
+          ))}
+        </div>
+
+        {/* ── モニタータブ ── */}
+        {tab === 'monitor' && (
+          <div>
+            {/* 開発者マスターコード */}
+            {(() => {
+              const devUrl = typeof window !== 'undefined' ? `${window.location.origin}/?token=DEVDEV` : '/?token=DEVDEV';
+              return (
+                <div style={{ background: '#1c1917', borderRadius: '14px', padding: '14px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                  <div>
+                    <p style={{ margin: '0 0 2px', fontSize: '11px', color: '#a8a29e', letterSpacing: '0.1em' }}>DEV MASTER CODE</p>
+                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 700, letterSpacing: '0.25em', color: '#fff', fontFamily: 'monospace' }}>DEVDEV</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#78716c' }}>先着9999回・子招待3人付き</p>
+                  </div>
+                  <a
+                    href={devUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ background: '#EC4899', color: '#fff', border: 'none', borderRadius: '10px', padding: '8px 16px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}
+                  >
+                    サイトを開く →
+                  </a>
+                </div>
+              );
+            })()}
+
+            {/* 発行フォーム */}
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e7e5e4', padding: '20px', marginBottom: '20px' }}>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#1c1917', margin: '0 0 14px' }}>モニターコード発行</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {(['invite', 'url'] as const).map((t) => (
+                    <button key={t} onClick={() => setMcType(t)} style={{ flex: 1, padding: '8px', borderRadius: '10px', border: `1.5px solid ${mcType === t ? '#1c1917' : '#e7e5e4'}`, background: mcType === t ? '#1c1917' : '#fff', color: mcType === t ? '#fff' : '#78716c', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+                      {t === 'invite' ? '招待コード' : '先着URL'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '120px' }}>
+                    <span style={{ fontSize: '11px', color: '#78716c' }}>子招待数</span>
+                    <select value={mcChildInvites} onChange={e => setMcChildInvites(Number(e.target.value))} style={{ border: '1px solid #d6d3d1', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff' }}>
+                      {[0, 1, 2, 3, 5, 10].map(n => <option key={n} value={n}>{n}人</option>)}
+                    </select>
+                  </label>
+                  {mcType === 'url' ? (
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '120px' }}>
+                      <span style={{ fontSize: '11px', color: '#78716c' }}>最大使用回数</span>
+                      <select value={mcMaxUses} onChange={e => setMcMaxUses(Number(e.target.value))} style={{ border: '1px solid #d6d3d1', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff' }}>
+                        {[1, 2, 3, 5, 10, 20, 50].map(n => <option key={n} value={n}>{n}名</option>)}
+                      </select>
+                    </label>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '120px' }}>
+                      <span style={{ fontSize: '11px', color: '#78716c' }}>発行枚数</span>
+                      <select value={mcQuantity} onChange={e => setMcQuantity(Number(e.target.value))} style={{ border: '1px solid #d6d3d1', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff' }}>
+                        {[1, 2, 3, 5, 10, 20].map(n => <option key={n} value={n}>{n}枚</option>)}
+                      </select>
+                    </label>
+                  )}
+                </div>
+                <button onClick={handleGenerateMonitorCode} disabled={mcGenerating} style={{ padding: '12px', background: '#1c1917', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: mcGenerating ? 0.6 : 1 }}>
+                  {mcGenerating ? '発行中...' : '発行する'}
+                </button>
+              </div>
+            </div>
+
+            {/* コード一覧 */}
+            {monitorLoading ? (
+              <p style={{ textAlign: 'center', color: '#a8a29e', padding: '40px 0', fontSize: '13px' }}>読み込み中...</p>
+            ) : monitorCodes.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#a8a29e', padding: '40px 0', fontSize: '13px' }}>コードがありません</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {monitorCodes.map((mc) => {
+                  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                  const copyText = mc.type === 'invite' ? mc.code : `${origin}/?token=${mc.code}`;
+                  const isFull = mc.used_count >= mc.max_uses;
+                  return (
+                    <div key={mc.id} style={{ background: '#fff', border: '1px solid #e7e5e4', borderRadius: '12px', padding: '12px 14px', opacity: mc.is_active ? 1 : 0.45 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 700, color: '#1c1917', letterSpacing: '0.15em', flex: 1 }}>
+                          {mc.type === 'invite' ? mc.code : `${origin}/?token=${mc.code}`}
+                        </span>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '99px', background: mc.type === 'invite' ? '#ede9fe' : '#fef3c7', color: mc.type === 'invite' ? '#7c3aed' : '#92400e' }}>
+                            {mc.type === 'invite' ? '招待' : 'URL'}
+                          </span>
+                          {!mc.is_active ? (
+                            <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '99px', background: '#f5f5f4', color: '#a8a29e' }}>無効</span>
+                          ) : isFull ? (
+                            <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '99px', background: '#f0fdf4', color: '#16a34a' }}>✓ 使用済み</span>
+                          ) : (
+                            <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '99px', background: '#fef3c7', color: '#92400e' }}>⏳ 未使用</span>
+                          )}
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(copyText).then(() => { setMcCopied(mc.id); setTimeout(() => setMcCopied(null), 2000); }); }}
+                            style={{ fontSize: '11px', padding: '3px 9px', background: mcCopied === mc.id ? '#f0fdf4' : '#f5f5f4', color: mcCopied === mc.id ? '#16a34a' : '#57534e', border: '1px solid #e7e5e4', borderRadius: '7px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            {mcCopied === mc.id ? '✓' : 'コピー'}
+                          </button>
+                        </div>
+                      </div>
+                      <p style={{ margin: '5px 0 0', fontSize: '10px', color: '#a8a29e' }}>
+                        子招待{mc.child_invites}人　{mc.used_count}/{mc.max_uses}回使用　発行: {mc.created_by}　{new Date(mc.created_at).toLocaleDateString('ja-JP')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── 診断ログタブ ── */}
+        {tab === 'logs' && <>
 
         {/* ヘッダー */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '8px', flexWrap: 'wrap' }}>
@@ -241,6 +427,7 @@ export default function AdminPage() {
             })}
           </div>
         )}
+        </>}
       </div>
 
       {/* ── 詳細モーダル ── */}
@@ -250,11 +437,12 @@ export default function AdminPage() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0' }}
         >
           <div
+            ref={modalRef}
             onClick={(e) => e.stopPropagation()}
-            style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', maxHeight: '92vh', overflowY: 'auto', padding: '20px 20px 40px' }}
+            style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', maxHeight: '92vh', overflowY: 'auto', padding: '0 0 40px' }}
           >
-            {/* モーダルヘッダー */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            {/* モーダルヘッダー（sticky） */}
+            <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', borderRadius: '20px 20px 0 0', padding: '20px 20px 12px', borderBottom: '1px solid #f5f5f4', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '12px', color: '#a8a29e' }}>{new Date(selected.created_at).toLocaleString('ja-JP')}</span>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
@@ -267,6 +455,9 @@ export default function AdminPage() {
                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#a8a29e', cursor: 'pointer', lineHeight: 1, padding: '4px' }}>×</button>
               </div>
             </div>
+
+            {/* スクロール可能コンテンツ */}
+            <div style={{ padding: '0 20px' }}>
 
             {/* 画像 */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
@@ -409,6 +600,7 @@ export default function AdminPage() {
                 </div>
               </>
             )}
+            </div> {/* /スクロール可能コンテンツ */}
           </div>
         </div>
       )}

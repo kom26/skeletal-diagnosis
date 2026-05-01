@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ResultCard from '@/components/ResultCard';
+import MyInvites from '@/components/MyInvites';
 import { DiagnosisResult } from '@/types';
 
 const LACE_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='5' r='3' fill='%23FCE7F3' stroke='%23F9A8D4' stroke-width='1'/%3E%3Cline x1='0' y1='5' x2='7' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3Cline x1='13' y1='5' x2='20' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3C/svg%3E")`;
@@ -98,6 +99,8 @@ export default function ResultPage() {
             <ResultCard result={result} onRetry={handleRetry} />
           </div>
         </div>
+
+        <MyInvites />
 
         <footer style={{ marginTop: '36px', textAlign: 'center' }}>
           <p style={{ color: '#FBCFE8', fontSize: '11px', letterSpacing: '0.15em' }}>

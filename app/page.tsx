@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '@/components/ImageUploader';
 import DiagnosisButton from '@/components/DiagnosisButton';
+import MonitorGate from '@/components/MonitorGate';
 import { ApiResponse, BodyInfo } from '@/types';
+import { getSession, getDiagnosisCount, incrementDiagnosisCount, MAX_DIAGNOSES } from '@/lib/monitor';
 
 const LACE_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='5' r='3' fill='%23FCE7F3' stroke='%23F9A8D4' stroke-width='1'/%3E%3Cline x1='0' y1='5' x2='7' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3Cline x1='13' y1='5' x2='20' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3C/svg%3E")`;
 
@@ -25,6 +27,10 @@ export default function HomePage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [minorBlocked, setMinorBlocked] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [diagCount, setDiagCount] = useState(() => {
+    const s = getSession();
+    return s ? getDiagnosisCount(s.codeId) : 0;
+  });
 
   useEffect(() => {
     if (!loading) { setLoadingStep(0); return; }
@@ -59,6 +65,20 @@ export default function HomePage() {
         return;
       }
       localStorage.setItem('diagnosisResult', JSON.stringify(json.data));
+      // 診断回数インクリメント（初回のみコード消費 = 先着URLは1人1枠）
+      const session = getSession();
+      if (session) {
+        const prevCount = getDiagnosisCount(session.codeId);
+        incrementDiagnosisCount(session.codeId);
+        setDiagCount(prevCount + 1);
+        if (prevCount === 0) {
+          fetch('/api/monitor/consume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codeId: session.codeId }),
+          }).catch(() => {});
+        }
+      }
       router.push('/result');
     } catch {
       setErrorMsg('通信エラーが発生しました。しばらくしてから再度お試しください。');
@@ -67,6 +87,7 @@ export default function HomePage() {
   };
 
   return (
+    <MonitorGate>
     <main style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #FFF0F5 0%, #FDF6F9 55%, #FFF7FA 100%)' }}>
 
       {/* pearl lace strip */}
@@ -133,9 +154,26 @@ export default function HomePage() {
             </div>
           )}
 
-          <DiagnosisButton onClick={handleDiagnose} disabled={!imageData || loading || minorBlocked} loading={loading} />
+          <DiagnosisButton onClick={handleDiagnose} disabled={!imageData || loading || minorBlocked || diagCount >= MAX_DIAGNOSES} loading={loading} />
 
-          <p style={{ marginTop: '14px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
+          {/* 診断残り回数 */}
+          {(() => {
+            const remaining = MAX_DIAGNOSES - diagCount;
+            if (remaining <= 0) {
+              return (
+                <p style={{ marginTop: '10px', fontSize: '12px', color: '#BE185D', textAlign: 'center', fontWeight: 600 }}>
+                  このコードの診断回数を使い切りました
+                </p>
+              );
+            }
+            return (
+              <p style={{ marginTop: '10px', fontSize: '11px', color: '#F9A8D4', textAlign: 'center', letterSpacing: '0.05em' }}>
+                このコードでの診断残り <strong style={{ color: '#EC4899' }}>{remaining}</strong> 回
+              </p>
+            );
+          })()}
+
+          <p style={{ marginTop: '8px', fontSize: '10px', color: '#a8a29e', textAlign: 'center', lineHeight: 1.8, letterSpacing: '0.02em' }}>
             アップロードされた画像はAI骨格診断の分析にのみ使用され、<br />第三者に提供されることはありません。
           </p>
         </div>
@@ -194,5 +232,6 @@ export default function HomePage() {
         </div>
       )}
     </main>
+    </MonitorGate>
   );
 }

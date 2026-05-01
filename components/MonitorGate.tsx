@@ -103,10 +103,15 @@ export default function MonitorGate({ children }: Props) {
           <input
             type="text"
             value={code}
-            onChange={e => setCode(e.target.value.toUpperCase())}
+            onChange={e => setCode(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6))}
             onKeyDown={e => e.key === 'Enter' && !loading && code.trim() && validate(code)}
             placeholder="XXXXXX"
             maxLength={6}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            inputMode="text"
             style={{
               width: '100%', boxSizing: 'border-box',
               padding: '14px 16px', fontSize: '20px', fontWeight: 700,

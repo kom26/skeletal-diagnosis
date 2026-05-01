@@ -15,10 +15,6 @@ interface Props {
 const JPEG_QUALITY = 0.82;
 const MAX_DIMENSION = 1024;
 
-interface CropOutput {
-  dataUrl: string;
-  imgTop: number;
-}
 
 async function loadImage(src: string): Promise<HTMLImageElement> {
   const image = new Image();
@@ -32,10 +28,7 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   return image;
 }
 
-async function applyFaceMask(
-  imageSrc: string,
-  imgTop: number,
-): Promise<string> {
+async function applyFaceMask(imageSrc: string): Promise<string> {
   const image = await loadImage(imageSrc);
   const w = image.naturalWidth;
   const h = image.naturalHeight;
@@ -44,11 +37,10 @@ async function applyFaceMask(
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(image, 0, 0);
-  // r・cx はキャンバス幅基準（クロップ枠の overlay 円と同サイズ）
-  // cy は imgTop（画像コンテンツ上端）から r 分下 — ズームアウト時も画像内に収まる
+  // 常にキャンバス最上部に配置（元画像の形状・ズーム状態によらず固定）
   const r  = w * 0.14;
   const cx = w / 2;
-  const cy = imgTop + r;
+  const cy = r;
   ctx.fillStyle = '#080606';
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -56,7 +48,7 @@ async function applyFaceMask(
   return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
-async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOutput> {
+async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   const image = await loadImage(imageSrc);
   const scale = Math.min(MAX_DIMENSION / pixelCrop.width, MAX_DIMENSION / pixelCrop.height, 1);
   const cw = Math.round(pixelCrop.width  * scale);
@@ -66,12 +58,9 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOut
   canvas.height = ch;
   const ctx = canvas.getContext('2d')!;
 
-  // 白で埋める（画像範囲外の余白）
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, cw, ch);
 
-  // ── Safari 互換: 負のsource座標を避けるため画像境界でクリップし
-  //    対応するdest座標にオフセットして描画する ──────────────────
   const srcX = Math.max(0, pixelCrop.x);
   const srcY = Math.max(0, pixelCrop.y);
   const srcW = Math.min(image.naturalWidth,  pixelCrop.x + pixelCrop.width)  - srcX;
@@ -85,10 +74,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<CropOut
     ctx.drawImage(image, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH);
   }
 
-  // 顔マスク位置計算用: キャンバス内の画像開始点と幅
-  const imgTop = Math.round((srcY - pixelCrop.y) / pixelCrop.height * ch);
-
-  return { dataUrl: canvas.toDataURL('image/jpeg', JPEG_QUALITY), imgTop };
+  return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 }
 
 async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise<string> {
@@ -207,11 +193,11 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
     if (!rawImage || !croppedAreaPixels) return;
     setProcessing(true);
     try {
-      const [{ dataUrl: cropped, imgTop }, expanded] = await Promise.all([
+      const [cropped, expanded] = await Promise.all([
         getCroppedImg(rawImage, croppedAreaPixels),
         getCroppedImgExpanded(rawImage, croppedAreaPixels),
       ]);
-      const masked = await applyFaceMask(cropped, imgTop);
+      const masked = await applyFaceMask(cropped);
       URL.revokeObjectURL(rawImage);
       setRawImage(null);
       setPreview(masked);

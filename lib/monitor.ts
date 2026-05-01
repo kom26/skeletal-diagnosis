@@ -61,3 +61,9 @@ export function getDiagnosisCount(codeId: string): number {
 export function incrementDiagnosisCount(codeId: string): void {
   localStorage.setItem(`diagCount_${codeId}`, String(getDiagnosisCount(codeId) + 1));
 }
+
+export function resetDiagnosisCount(codeId: string): void {
+  localStorage.setItem(`diagCount_${codeId}`, '0');
+}
+
+export const DEV_CODE = 'DEVDEV';

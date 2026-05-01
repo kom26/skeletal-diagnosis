@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MONITOR_MODE, getSession, saveSession, MAX_DIAGNOSES } from '@/lib/monitor';
+import { MONITOR_MODE, getSession, saveSession, MAX_DIAGNOSES, DEV_CODE, resetDiagnosisCount } from '@/lib/monitor';
 
 const LACE_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='5' r='3' fill='%23FCE7F3' stroke='%23F9A8D4' stroke-width='1'/%3E%3Cline x1='0' y1='5' x2='7' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3Cline x1='13' y1='5' x2='20' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3C/svg%3E")`;
 
@@ -21,6 +21,7 @@ export default function MonitorGate({ children }: Props) {
       const session = getSession();
       // 同じトークンで既にセッション確立済みなら再検証不要（2回目アクセス対応）
       if (session && session.code === token.toUpperCase().trim()) {
+        if (session.code === DEV_CODE) resetDiagnosisCount(session.codeId);
         setStatus('ok');
         return;
       }
@@ -50,7 +51,9 @@ export default function MonitorGate({ children }: Props) {
         setStatus('gate');
         return;
       }
-      saveSession({ codeId: json.codeId, code: input.toUpperCase().trim(), childInvites: json.childInvites });
+      const normalizedCode = input.toUpperCase().trim();
+      saveSession({ codeId: json.codeId, code: normalizedCode, childInvites: json.childInvites });
+      if (fromUrl && normalizedCode === DEV_CODE) resetDiagnosisCount(json.codeId);
       if (fromUrl && window.history.replaceState) {
         const u = new URL(window.location.href);
         u.searchParams.delete('token');

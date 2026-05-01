@@ -273,7 +273,7 @@ export default function AdminPage() {
                   </label>
                   {mcType === 'url' ? (
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '120px' }}>
-                      <span style={{ fontSize: '11px', color: '#78716c' }}>最大使用回数</span>
+                      <span style={{ fontSize: '11px', color: '#78716c' }}>先着人数</span>
                       <select value={mcMaxUses} onChange={e => setMcMaxUses(Number(e.target.value))} style={{ border: '1px solid #d6d3d1', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff' }}>
                         {[1, 2, 3, 5, 10, 20, 50].map(n => <option key={n} value={n}>{n}名</option>)}
                       </select>
@@ -442,17 +442,17 @@ export default function AdminPage() {
             style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
           >
             {/* モーダルヘッダー（常時表示） */}
-            <div style={{ flexShrink: 0, background: '#fff', borderRadius: '20px 20px 0 0', padding: '20px 20px 12px', borderBottom: '1px solid #f5f5f4', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '12px', color: '#a8a29e' }}>{new Date(selected.created_at).toLocaleString('ja-JP')}</span>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ flexShrink: 0, background: '#fff', borderRadius: '20px 20px 0 0', padding: '14px 16px', borderBottom: '1px solid #f5f5f4', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#a8a29e', flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{new Date(selected.created_at).toLocaleString('ja-JP')}</span>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                 <button
                   onClick={() => handleDelete([selected.id])}
                   disabled={deleting}
-                  style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   🗑 削除
                 </button>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#a8a29e', cursor: 'pointer', lineHeight: 1, padding: '4px' }}>×</button>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#a8a29e', cursor: 'pointer', lineHeight: 1, padding: '4px 6px' }}>×</button>
               </div>
             </div>
 

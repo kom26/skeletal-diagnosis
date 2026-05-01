@@ -87,15 +87,13 @@ export default function MyInvites() {
     });
   };
 
-  const childLabel = (n: number) => n === 0 ? '招待なし' : `${n}人招待付き`;
-
   return (
     <div style={{ background: '#FFF5F8', borderRadius: '20px', padding: '20px', border: '1.5px solid #FCE7F3', marginTop: '20px' }}>
       <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: '#EC4899', margin: '0 0 4px' }}>
         ✦ あなたの招待
       </p>
       <p style={{ fontSize: '12px', color: '#9D174D', margin: '0 0 16px', lineHeight: 1.6 }}>
-        {session.childInvites}人を招待できます
+        {session.childInvites}人にモニターコード（2回まで診断可能）を発行できます
       </p>
 
       {/* 未発行 → 選択UI */}
@@ -156,10 +154,9 @@ export default function MyInvites() {
                     ) : (
                       <p style={{ margin: 0, fontSize: '11px', color: '#9D174D', wordBreak: 'break-all', fontWeight: 600 }}>{origin}/?token={item.code}</p>
                     )}
-                    <p style={{ margin: '3px 0 0', fontSize: '10px', color: '#a8a29e' }}>
-                      {childLabel(item.childInvites)}
-                      {st && invites.type === 'url' && <span>　{st.usedCount}/{st.maxUses}名使用</span>}
-                    </p>
+                    {st && invites.type === 'url' && (
+                      <p style={{ margin: '3px 0 0', fontSize: '10px', color: '#a8a29e' }}>{st.usedCount}/{st.maxUses}名使用</p>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                     {/* 使用状況バッジ */}

@@ -23,6 +23,23 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'SKELÉ — AI骨格診断',
   description: '写真1枚からAIが骨格タイプ（ストレート・ウェーブ・ナチュラル）を診断します',
+  openGraph: {
+    title: 'SKELÉ — AI骨格診断',
+    description: '写真1枚からAIが骨格タイプを診断します',
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630 }],
+    locale: 'ja_JP',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SKELÉ — AI骨格診断',
+    description: '写真1枚からAIが骨格タイプを診断します',
+    images: ['/og-image.jpg'],
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

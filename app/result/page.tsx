@@ -132,42 +132,47 @@ export default function ResultPage() {
         {/* preview image + 重心インジケーター */}
         {previewImage && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            <div style={{ position: 'relative', width: '68%' }}>
+            <div style={{ position: 'relative', width: '62%' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={previewImage} alt="診断画像" style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '20px', border: '2px solid #FCE7F3', boxShadow: '0 4px 20px rgba(236,72,153,0.10)' }} />
 
-              {/* 画像上の水平ライン */}
+              {/* 水平ライン（均一・画像全幅） */}
               <div ref={lineRef} style={{
                 position: 'absolute', top: '50%', left: 0, right: 0,
                 height: '1.5px', pointerEvents: 'none',
-                background: 'linear-gradient(to right, transparent, rgba(236,72,153,0.35) 18%, #EC4899)',
+                background: 'rgba(236,72,153,0.55)',
                 transform: 'translateY(-50%)',
               }} />
 
-              {/* 目盛り + ◀ インジケーター */}
-              <div style={{ position: 'absolute', top: 0, bottom: 0, right: '-64px', width: '64px', pointerEvents: 'none' }}>
-                {/* 縦線 */}
-                <div style={{ position: 'absolute', left: 0, top: '4%', bottom: '4%', width: '1.5px', background: 'linear-gradient(to bottom, transparent, #F9A8D4 12%, #F9A8D4 88%, transparent)' }} />
-                {/* 目盛り */}
+              {/* 目盛り（左側） */}
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: '-28px', width: '28px', pointerEvents: 'none' }}>
+                {/* 縦線（右端 = 画像左端） */}
+                <div style={{ position: 'absolute', right: 0, top: '4%', bottom: '4%', width: '1.5px', background: 'linear-gradient(to bottom, transparent, #F9A8D4 12%, #F9A8D4 88%, transparent)' }} />
+                {/* 目盛り（右端から左へ伸びる） */}
                 {RULER_TICKS.map(v => {
                   const isCenter = v === 0;
                   return (
-                    <div key={v} style={{ position: 'absolute', top: `${50 - v}%`, left: 0, transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
-                      <div style={{ width: isCenter ? '10px' : '6px', height: isCenter ? '2px' : '1.5px', background: isCenter ? '#EC4899' : '#F9A8D4', flexShrink: 0, borderRadius: '1px' }} />
-                      {isCenter && <span style={{ fontSize: '9px', color: '#EC4899', marginLeft: '3px', fontWeight: 700, lineHeight: 1 }}>0</span>}
+                    <div key={v} style={{ position: 'absolute', top: `${50 - v}%`, right: '1px', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', flexDirection: 'row-reverse' }}>
+                      <div style={{ width: isCenter ? '10px' : '6px', height: isCenter ? '2px' : '1.5px', background: isCenter ? '#EC4899' : '#F9A8D4', borderRadius: '1px', flexShrink: 0 }} />
+                      {isCenter && <span style={{ fontSize: '9px', color: '#EC4899', marginRight: '3px', fontWeight: 700, lineHeight: 1 }}>0</span>}
                     </div>
                   );
                 })}
-                {/* ◀ インジケーター */}
-                <div ref={indicatorRef} style={{
-                  position: 'absolute', top: '50%', left: 0,
-                  transform: 'translateY(-50%)',
-                  display: 'flex', alignItems: 'center', gap: '3px',
-                }}>
-                  <span style={{ color: '#EC4899', fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>◀</span>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#BE185D', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-                    {`重心の高さ ${animDev > 0 ? '+' : ''}${animDev}%`}
-                  </span>
+              </div>
+
+              {/* ◀ インジケーター（右側） */}
+              <div ref={indicatorRef} style={{
+                position: 'absolute', top: '50%', right: '-60px',
+                transform: 'translateY(-50%)',
+                display: 'flex', alignItems: 'center', gap: '3px',
+                pointerEvents: 'none',
+              }}>
+                <span style={{ color: '#EC4899', fontSize: '13px', lineHeight: 1, flexShrink: 0 }}>◀</span>
+                <div>
+                  <div style={{ fontSize: '8px', color: '#BE185D', whiteSpace: 'nowrap', lineHeight: 1.4, letterSpacing: '0.03em' }}>重心の高さ</div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#BE185D', whiteSpace: 'nowrap', lineHeight: 1.1, textAlign: 'center' }}>
+                    {`${animDev > 0 ? '+' : ''}${animDev}%`}
+                  </div>
                 </div>
               </div>
             </div>

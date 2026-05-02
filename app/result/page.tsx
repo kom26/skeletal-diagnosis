@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ResultCard from '@/components/ResultCard';
-import MyInvites from '@/components/MyInvites';
 import { DiagnosisResult, BodyType } from '@/types';
 
 const BASE_DEV: Record<BodyType, number> = {
@@ -190,11 +189,9 @@ export default function ResultPage() {
           </div>
         </div>
 
-        <MyInvites />
-
         <footer style={{ marginTop: '36px', textAlign: 'center' }}>
           <p style={{ color: '#FBCFE8', fontSize: '11px', letterSpacing: '0.15em' }}>
-            ✦ © 2025 SKELÉ — AI骨格診断 ✦
+            ✦ © 2026 SKELÉ — AI骨格診断 ✦
           </p>
         </footer>
       </div>

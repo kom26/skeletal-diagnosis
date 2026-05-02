@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DiagnosisResult, BodyType } from '@/types';
+import MyInvites from '@/components/MyInvites';
 
 const TYPE_META: Record<BodyType, {
   label: string;
@@ -39,6 +40,55 @@ const TYPE_META: Record<BodyType, {
 
 const ALL_TYPES: BodyType[] = ['straight', 'wave', 'natural'];
 
+const BOLD_KEYWORDS = [
+  '骨格ストレート', '骨格ウェーブ', '骨格ナチュラル',
+  '上半身', '下半身', '鎖骨', 'バスト', 'ウエスト', 'ヒップ', '太もも', 'お尻', '肩幅',
+  '重心', '筋肉', '脂肪', 'フレーム', '骨格',
+];
+
+const ARU_ARU: Record<BodyType, { items: string[]; sympathy: string }> = {
+  straight: {
+    items: [
+      '食べてないのに上半身だけ太る気がする…',
+      'ウエストがなかなか細くならない',
+      'ダイエットすると顔と下半身から痩せて上半身が最後になる',
+    ],
+    sympathy: '上半身に肉がつきやすいのはストレートの骨格構造が原因。筋肉量が多く上半身にボリュームが集まりやすい構造のため、頑張っても変わりにくいのは"骨格のせい"で合ってます。無理なダイエットより、骨格に合った着こなしで今すぐスッキリ見せるほうが近道です。',
+  },
+  wave: {
+    items: [
+      '上半身は細いのに下半身だけ太る気がする…',
+      'ダイエットしてもお尻・太ももだけ最後まで残る',
+      '立っていると脚が短く・下重心に見えやすい',
+    ],
+    sympathy: '下半身に脂肪がつきやすいのはウェーブ骨格の重心バランスが原因。骨格の構造上、下半身に重心が集まりやすいため、頑張っても"下半身だけ残る"のはある意味仕方ない部分があります。着こなしで上半身にボリュームを出すことでバランスを整えられます。',
+  },
+  natural: {
+    items: [
+      '痩せているのに肩や骨格がしっかり見える…',
+      '実は細いのにゴツく見られがち',
+      'ダイエットしても骨感が出るだけで華奢に見えない',
+    ],
+    sympathy: 'がっしり・骨っぽく見えるのはナチュラルのフレーム感から来るもの。骨格のフレーム自体は変えられないため、どれだけ体重を落としても"大きく見える"と感じるのはある意味骨格のせい。でも着こなし次第でスッキリ・こなれた印象に変えられます。',
+  },
+};
+
+function parseBold(text: string): React.ReactNode {
+  const sorted = [...BOLD_KEYWORDS].sort((a, b) => b.length - a.length);
+  const escaped = sorted.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escaped.join('|')})`, 'g');
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        sorted.includes(part)
+          ? <strong key={i} style={{ fontWeight: 700 }}>{part}</strong>
+          : part
+      )}
+    </>
+  );
+}
+
 interface Props {
   result: DiagnosisResult;
   onRetry: () => void;
@@ -46,13 +96,14 @@ interface Props {
 
 export default function ResultCard({ result, onRetry }: Props) {
   const meta = TYPE_META[result.bodyType];
+  const aruAru = ARU_ARU[result.bodyType];
   const [showTips, setShowTips] = useState(false);
+  const hasTips = (result.confidence === 'medium' || result.confidence === 'low')
+    && result.confidenceTips && result.confidenceTips.length > 0;
 
   const CONF_LABEL: Record<string, string> = { high: '高', medium: '中', low: '低' };
   const confidenceLabel = CONF_LABEL[result.confidence as string] ?? '中';
-  const hasTips = (result.confidence === 'medium' || result.confidence === 'low') && result.confidenceTips && result.confidenceTips.length > 0;
 
-  // スコアを降順ソート（常に3タイプ表示）
   const sortedTypes = [...ALL_TYPES].sort(
     (a, b) => (result.scores?.[b] ?? 0) - (result.scores?.[a] ?? 0)
   );
@@ -60,13 +111,11 @@ export default function ResultCard({ result, onRetry }: Props) {
   return (
     <div style={{ width: '100%' }}>
 
-      {/* ── タイプバナー ── */}
-      <div style={{ background: meta.bg, borderRadius: '18px', padding: '24px 20px 20px', marginBottom: '20px', border: `1px solid ${meta.accentColor}30` }}>
-
+      {/* ── Section 1: 骨格タイプ ── */}
+      <div style={{ background: meta.bg, borderRadius: '18px', padding: '24px 20px 20px', marginBottom: '16px', border: `1px solid ${meta.accentColor}30` }}>
         <p style={{ fontSize: '11px', letterSpacing: '0.2em', color: meta.accentColor, marginBottom: '8px', marginTop: 0 }}>
           ✦ Diagnosis Result ✦
         </p>
-
         <h2 style={{ fontSize: '28px', fontWeight: 700, color: meta.titleColor, letterSpacing: '0.05em', lineHeight: 1.2, margin: '0 0 6px' }}>
           {meta.label}
         </h2>
@@ -76,7 +125,7 @@ export default function ResultCard({ result, onRetry }: Props) {
 
         <div style={{ height: '1px', background: `linear-gradient(to right, ${meta.accentColor}60, transparent)`, marginBottom: '16px' }} />
 
-        {/* 画像の診断適性 */}
+        {/* 信頼度 */}
         <div style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -109,7 +158,6 @@ export default function ResultCard({ result, onRetry }: Props) {
             </div>
           </div>
 
-          {/* 改善ヒントパネル */}
           {hasTips && showTips && (
             <div style={{ marginTop: '12px', background: '#FFFBEB', borderRadius: '12px', padding: '14px 16px', border: '1.5px solid #FDE68A' }}>
               <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#B45309', letterSpacing: '0.08em' }}>
@@ -129,7 +177,7 @@ export default function ResultCard({ result, onRetry }: Props) {
           )}
         </div>
 
-        {/* 3タイプのスコアバー（常に表示・降順） */}
+        {/* スコアバー */}
         {result.scores && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {sortedTypes.map((t) => {
@@ -158,68 +206,99 @@ export default function ResultCard({ result, onRetry }: Props) {
         )}
       </div>
 
-      {/* ── 説明文 ── */}
-      <p style={{ fontSize: '13px', lineHeight: 1.9, color: '#5C4658', margin: '0 0 20px', padding: '0 2px' }}>
-        {result.description}
-      </p>
-
-      {/* ── 写真から読み取れた特徴 ── */}
+      {/* ── Section 2: この写真から読み取れた特徴 ── */}
       {result.observations && result.observations.length > 0 && (
-        <div style={{ background: meta.bg, borderRadius: '14px', padding: '18px 18px', marginBottom: '14px', border: `1px solid ${meta.accentColor}30` }}>
-          <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: meta.accentColor, margin: '0 0 6px' }}>
+        <div style={{ background: meta.bg, borderRadius: '14px', padding: '18px 18px', marginBottom: '16px', border: `1px solid ${meta.accentColor}30` }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: meta.accentColor, margin: '0 0 3px' }}>
             📸 この写真から読み取れた特徴
           </p>
-          <p style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.6, margin: '0 0 14px', letterSpacing: '0.03em' }}>
+          <p style={{ fontSize: '11px', color: meta.titleColor, opacity: 0.55, margin: '0 0 14px', letterSpacing: '0.03em' }}>
             AIが実際の写真から確認した骨格的特徴です
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {result.observations.map((o, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: meta.accentColor, flexShrink: 0, marginTop: '6px' }} />
-                <span style={{ fontSize: '13px', color: '#5C4658', lineHeight: 1.75 }}>{o}</span>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: meta.accentColor, flexShrink: 0, marginTop: '7px' }} />
+                <span style={{ fontSize: '13px', color: '#5C4658', lineHeight: 1.75 }}>{parseBold(o)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ── 骨格の特徴 ── */}
-      <div style={{ background: '#FFF5F8', borderRadius: '14px', padding: '18px 18px', marginBottom: '14px', border: '1px solid #FCE7F3' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: meta.accentColor, margin: '0 0 14px' }}>
-          骨格の特徴
+      {/* ── Section 3: 骨格の特徴 ── */}
+      <div style={{ background: '#FFF5F8', borderRadius: '14px', padding: '18px 18px', marginBottom: '16px', border: '1px solid #FCE7F3' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: meta.accentColor, margin: '0 0 14px' }}>
+          ✦ 骨格の特徴
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+        <p style={{ fontSize: '13px', lineHeight: 1.9, color: '#5C4658', margin: '0 0 14px', padding: 0 }}>
+          {parseBold(result.description)}
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
           {result.characteristics.map((c, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: meta.accentColor, flexShrink: 0, marginTop: '6px' }} />
-              <span style={{ fontSize: '13px', color: '#5C4658', lineHeight: 1.75 }}>{c}</span>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: meta.accentColor, flexShrink: 0, marginTop: '7px' }} />
+              <span style={{ fontSize: '13px', color: '#5C4658', lineHeight: 1.75 }}>{parseBold(c)}</span>
             </div>
           ))}
         </div>
+
+        <div style={{ height: '1px', background: '#FCE7F3', marginBottom: '16px' }} />
+
+        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', color: meta.accentColor, margin: '0 0 10px' }}>
+          💬 あるある
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginBottom: '14px' }}>
+          {aruAru.items.map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+              <span style={{
+                background: meta.accentColor,
+                color: '#fff',
+                fontSize: '10px',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '99px',
+                flexShrink: 0,
+                letterSpacing: '0.03em',
+                lineHeight: 1.6,
+              }}>わかる</span>
+              <span style={{ fontSize: '12px', color: meta.titleColor, lineHeight: 1.6 }}>{item}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: `${meta.accentColor}0D`, borderRadius: '10px', padding: '12px 14px', border: `1px solid ${meta.accentColor}28` }}>
+          <span style={{ fontSize: '12px', color: '#5C4658', lineHeight: 1.85 }}>{parseBold(aruAru.sympathy)}</span>
+        </div>
       </div>
 
-      {/* ── スタイルアドバイス ── */}
-      <div style={{ background: '#FFF5F8', borderRadius: '14px', padding: '18px 18px', marginBottom: '24px', border: '1px solid #FCE7F3' }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: meta.accentColor, margin: '0 0 14px' }}>
-          スタイルアドバイス
+      {/* ── Section 4: スタイルアドバイス ── */}
+      <div style={{ background: '#FFF5F8', borderRadius: '14px', padding: '18px 18px', marginBottom: '16px', border: '1px solid #FCE7F3' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: meta.accentColor, margin: '0 0 14px' }}>
+          ✨ スタイルアドバイス
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {result.styleAdvice.map((s, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: meta.accentColor, flexShrink: 0, marginTop: '6px' }} />
-              <span style={{ fontSize: '13px', color: '#5C4658', lineHeight: 1.75 }}>{s}</span>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: meta.accentColor, flexShrink: 0, marginTop: '7px' }} />
+              <span style={{ fontSize: '13px', color: '#5C4658', lineHeight: 1.75 }}>{parseBold(s)}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── 免責 ── */}
-      <p style={{ fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, margin: '0 0 20px' }}>
+      {/* ── Section 5: あなたの招待 ── */}
+      <MyInvites />
+
+      {/* 免責 */}
+      <p style={{ fontSize: '11px', color: '#F9A8D4', textAlign: 'center', lineHeight: 1.8, margin: '24px 0 20px' }}>
         ♡ この診断はAIによる参考情報です ♡<br />
         <span style={{ color: '#FBCFE8' }}>プロのスタイリストによる対面診断が最も正確です</span>
       </p>
 
-      {/* ── もう一度ボタン ── */}
+      {/* もう一度ボタン */}
       <button
         onClick={onRetry}
         style={{
@@ -239,6 +318,28 @@ export default function ResultCard({ result, onRetry }: Props) {
       >
         ♡ もう一度診断する ♡
       </button>
+
+      {/* ── 信頼度が中・低の場合：精度を上げるコツ ── */}
+      {hasTips && (
+        <div style={{ marginTop: '16px', background: '#FFFBEB', borderRadius: '14px', padding: '18px 18px', border: '1.5px solid #FDE68A' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: '#B45309', margin: '0 0 4px' }}>
+            📷 次回の診断精度を上げるには
+          </p>
+          <p style={{ fontSize: '11px', color: '#92400E', opacity: 0.7, margin: '0 0 14px', letterSpacing: '0.03em' }}>
+            今回の写真でこれらが確認しにくかったため、信頼度が下がりました
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {result.confidenceTips!.map((tip, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>
+                  <span style={{ color: '#fff', fontSize: '10px', fontWeight: 700 }}>{i + 1}</span>
+                </div>
+                <span style={{ fontSize: '12px', color: '#78350F', lineHeight: 1.8 }}>{tip}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

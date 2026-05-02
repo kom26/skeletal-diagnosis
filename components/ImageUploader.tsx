@@ -101,7 +101,7 @@ async function getCroppedImgExpanded(imageSrc: string, pixelCrop: Area): Promise
 
 const GUIDES = [
   { label: 'あご', top: '21%' },
-  { label: 'へそ', top: '46%' },
+  { label: 'へそ', top: '55%' },
 ];
 
 

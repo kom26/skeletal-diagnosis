@@ -12,7 +12,7 @@ const BASE_DEV: Record<BodyType, number> = {
   natural:   0,   // 中心
 };
 
-const RULER_TICKS = [-40, -30, -20, -10, 0, 10, 20, 30, 40];
+const RULER_TICKS = [-20, -10, 0, 10, 20];
 
 function computeDeviation(result: DiagnosisResult): number {
   const base = BASE_DEV[result.bodyType];
@@ -51,7 +51,7 @@ export default function ResultPage() {
   useEffect(() => {
     if (!result || !previewImage) return;
     const finalDev = computeDeviation(result);
-    const targetY  = Math.max(5, Math.min(95, 53 - finalDev));
+    const targetY  = Math.max(5, Math.min(95, 57 - finalDev));
 
     // ease-out quart: スーッと減速してピタッと止まる
     const ease = (p: number) => 1 - Math.pow(1 - p, 4);
@@ -62,11 +62,11 @@ export default function ResultPage() {
       const duration  = 1400;
       const frame = (now: number) => {
         const progress = Math.min((now - startTime) / duration, 1);
-        const currentY = 53 + (targetY - 53) * ease(progress);
+        const currentY = 57 + (targetY - 57) * ease(progress);
         const topStr = `${currentY}%`;
         if (indicatorRef.current) indicatorRef.current.style.top = topStr;
         if (lineRef.current)      lineRef.current.style.top      = topStr;
-        const d = Math.round(53 - currentY);
+        const d = Math.round(57 - currentY);
         if (d !== lastDev) { lastDev = d; setAnimDev(d); }
         if (progress < 1) {
           rafRef.current = requestAnimationFrame(frame);
@@ -135,7 +135,7 @@ export default function ResultPage() {
               {result.confidence === 'high' && <>
                 {/* 水平ライン（均一・画像全幅） */}
                 <div ref={lineRef} style={{
-                  position: 'absolute', top: '53%', left: 0, right: 0,
+                  position: 'absolute', top: '57%', left: 0, right: 0,
                   height: '1.5px', pointerEvents: 'none',
                   background: 'rgba(236,72,153,0.55)',
                   transform: 'translateY(-50%)',
@@ -143,11 +143,11 @@ export default function ResultPage() {
 
                 {/* 目盛り（左側） */}
                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: '-26px', width: '28px', pointerEvents: 'none' }}>
-                  <div style={{ position: 'absolute', right: 0, top: '4%', bottom: '4%', width: '1.5px', background: 'linear-gradient(to bottom, transparent, #F9A8D4 12%, #F9A8D4 88%, transparent)' }} />
+                  <div style={{ position: 'absolute', right: 0, top: '4%', bottom: '4%', width: '1.5px', background: 'linear-gradient(to bottom, transparent, #F9A8D4 28%, #F9A8D4 72%, transparent)' }} />
                   {RULER_TICKS.map(v => {
                     const isCenter = v === 0;
                     return (
-                      <div key={v} style={{ position: 'absolute', top: `${53 - v}%`, right: '1px', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', flexDirection: 'row-reverse' }}>
+                      <div key={v} style={{ position: 'absolute', top: `${57 - v}%`, right: '1px', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', flexDirection: 'row-reverse' }}>
                         <div style={{ width: isCenter ? '10px' : '6px', height: isCenter ? '2px' : '1.5px', background: isCenter ? '#EC4899' : '#F9A8D4', borderRadius: '1px', flexShrink: 0 }} />
                         {isCenter && <span style={{ fontSize: '9px', color: '#EC4899', marginRight: '3px', fontWeight: 700, lineHeight: 1 }}>0</span>}
                       </div>
@@ -157,7 +157,7 @@ export default function ResultPage() {
 
                 {/* ◀ インジケーター（右側） */}
                 <div ref={indicatorRef} style={{
-                  position: 'absolute', top: '53%', right: '-60px',
+                  position: 'absolute', top: '57%', right: '-60px',
                   transform: 'translateY(-50%)',
                   display: 'flex', alignItems: 'center', gap: '3px',
                   pointerEvents: 'none',

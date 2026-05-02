@@ -1,10 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ResultCard from '@/components/ResultCard';
 import MyInvites from '@/components/MyInvites';
-import { DiagnosisResult } from '@/types';
+import { DiagnosisResult, BodyType } from '@/types';
+
+const BASE_DEV: Record<BodyType, number> = {
+  straight: 10,   // +: 上半身寄り
+  wave:    -12,   // −: 下半身寄り
+  natural:   0,   // 中心
+};
+
+const RULER_TICKS = [-40, -30, -20, -10, 0, 10, 20, 30, 40];
+
+function computeDeviation(result: DiagnosisResult): number {
+  const base = BASE_DEV[result.bodyType];
+  const dir  = Math.sign(base);
+  const confAdj = result.confidence === 'high' ? dir * 2
+                : result.confidence === 'low'  ? dir * -3
+                : 0;
+  // scores の値からブレを決定論的に生成（−3〜+3）
+  const hash = ((result.scores.straight * 7 + result.scores.wave * 11 + result.scores.natural * 3) % 7) - 3;
+  return base + confAdj + hash;
+}
 
 const LACE_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='5' r='3' fill='%23FCE7F3' stroke='%23F9A8D4' stroke-width='1'/%3E%3Cline x1='0' y1='5' x2='7' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3Cline x1='13' y1='5' x2='20' y2='5' stroke='%23F9A8D4' stroke-width='0.8'/%3E%3C/svg%3E")`;
 
@@ -12,17 +31,61 @@ export default function ResultPage() {
   const router = useRouter();
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [animDev, setAnimDev] = useState(0);
+  const rafRef      = useRef<number | null>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const lineRef      = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('diagnosisResult');
     if (!stored) { router.replace('/'); return; }
     try {
-      setResult(JSON.parse(stored));
+      const parsed = JSON.parse(stored) as DiagnosisResult;
+      setResult(parsed);
       setPreviewImage(localStorage.getItem('previewImage'));
     } catch {
       router.replace('/');
     }
   }, [router]);
+
+  useEffect(() => {
+    if (!result || !previewImage) return;
+    const finalDev = computeDeviation(result);
+    const targetY  = Math.max(5, Math.min(95, 50 - finalDev));
+
+    // elastic-out easing (easeOutElastic)
+    const ease = (p: number) => {
+      if (p === 0 || p === 1) return p;
+      const c = (2 * Math.PI) / 3;
+      return Math.pow(2, -10 * p) * Math.sin((p * 10 - 0.75) * c) + 1;
+    };
+
+    let lastDev = 0;
+    const t = setTimeout(() => {
+      const startTime = performance.now();
+      const duration  = 1100;
+      const frame = (now: number) => {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const currentY = 50 + (targetY - 50) * ease(progress);
+        const topStr = `${currentY}%`;
+        if (indicatorRef.current) indicatorRef.current.style.top = topStr;
+        if (lineRef.current)      lineRef.current.style.top      = topStr;
+        const d = Math.round(50 - currentY);
+        if (d !== lastDev) { lastDev = d; setAnimDev(d); }
+        if (progress < 1) {
+          rafRef.current = requestAnimationFrame(frame);
+        } else {
+          setAnimDev(finalDev);
+        }
+      };
+      rafRef.current = requestAnimationFrame(frame);
+    }, 350);
+
+    return () => {
+      clearTimeout(t);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [result, previewImage]);
 
   const handleRetry = () => {
     localStorage.removeItem('diagnosisResult');
@@ -66,22 +129,48 @@ export default function ResultPage() {
           <p style={{ color: '#BE185D', fontSize: '11px', letterSpacing: '0.25em' }}>DIAGNOSIS RESULT</p>
         </header>
 
-        {/* preview image */}
+        {/* preview image + 重心インジケーター */}
         {previewImage && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewImage}
-              alt="診断画像"
-              style={{
-                width: '75%',
-                height: 'auto',
-                display: 'block',
-                borderRadius: '20px',
-                border: '2px solid #FCE7F3',
-                boxShadow: '0 4px 20px rgba(236,72,153,0.10)',
-              }}
-            />
+            <div style={{ position: 'relative', width: '68%' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={previewImage} alt="診断画像" style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '20px', border: '2px solid #FCE7F3', boxShadow: '0 4px 20px rgba(236,72,153,0.10)' }} />
+
+              {/* 画像上の水平ライン */}
+              <div ref={lineRef} style={{
+                position: 'absolute', top: '50%', left: 0, right: 0,
+                height: '1.5px', pointerEvents: 'none',
+                background: 'linear-gradient(to right, transparent, rgba(236,72,153,0.35) 18%, #EC4899)',
+                transform: 'translateY(-50%)',
+              }} />
+
+              {/* 目盛り + ◀ インジケーター */}
+              <div style={{ position: 'absolute', top: 0, bottom: 0, right: '-64px', width: '64px', pointerEvents: 'none' }}>
+                {/* 縦線 */}
+                <div style={{ position: 'absolute', left: 0, top: '4%', bottom: '4%', width: '1.5px', background: 'linear-gradient(to bottom, transparent, #F9A8D4 12%, #F9A8D4 88%, transparent)' }} />
+                {/* 目盛り */}
+                {RULER_TICKS.map(v => {
+                  const isCenter = v === 0;
+                  return (
+                    <div key={v} style={{ position: 'absolute', top: `${50 - v}%`, left: 0, transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                      <div style={{ width: isCenter ? '10px' : '6px', height: isCenter ? '2px' : '1.5px', background: isCenter ? '#EC4899' : '#F9A8D4', flexShrink: 0, borderRadius: '1px' }} />
+                      {isCenter && <span style={{ fontSize: '9px', color: '#EC4899', marginLeft: '3px', fontWeight: 700, lineHeight: 1 }}>0</span>}
+                    </div>
+                  );
+                })}
+                {/* ◀ インジケーター */}
+                <div ref={indicatorRef} style={{
+                  position: 'absolute', top: '50%', left: 0,
+                  transform: 'translateY(-50%)',
+                  display: 'flex', alignItems: 'center', gap: '3px',
+                }}>
+                  <span style={{ color: '#EC4899', fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>◀</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#BE185D', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+                    {`重心の高さ ${animDev > 0 ? '+' : ''}${animDev}%`}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

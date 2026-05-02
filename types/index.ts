@@ -9,6 +9,7 @@ export interface BodyInfo {
   cup?: string;
 }
 
+
 export interface DiagnosisResult {
   bodyType: BodyType;
   confidence: 'high' | 'medium' | 'low'; // 画像の診断適性（薄着・正面→high）

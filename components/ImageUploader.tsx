@@ -316,7 +316,10 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
 
       {/* ── クロップ画面 ── */}
       {rawImage && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#0c0a09', zIndex: 9998 }}>
+        <div
+          onContextMenu={e => e.preventDefault()}
+          style={{ position: 'fixed', inset: 0, backgroundColor: '#0c0a09', zIndex: 9998, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+        >
           <div
             ref={headerRef}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10000, backgroundColor: 'rgba(12,10,9,0.92)', paddingTop: 'env(safe-area-inset-top)' }}
@@ -331,7 +334,7 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
             </div>
             <p style={{ color: '#ffffff', fontSize: '12px', textAlign: 'center', paddingBottom: '12px', paddingLeft: '16px', paddingRight: '16px', letterSpacing: '0.05em', lineHeight: '1.7' }}>
               「あご」と「へそ」をラインに合わせてください<br />
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px' }}>〇の内側はプライバシー保護のため塗りつぶされて分析に使用されます</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px' }}>〇の内側はプライバシー保護のため<br />塗りつぶされて分析に使用されます</span>
             </p>
           </div>
           <div style={{ position: 'absolute', top: cropperBounds.top, bottom: cropperBounds.bottom, left: 0, right: 0 }}>
@@ -347,7 +350,7 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
               minZoom={0.3}
               restrictPosition={false}
               style={{
-                containerStyle: { backgroundColor: '#ffffff' },
+                containerStyle: { backgroundColor: '#ffffff', WebkitTouchCallout: 'none' } as React.CSSProperties,
                 cropAreaStyle: { border: '1.5px solid rgba(255,255,255,0.6)', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' },
               }}
             />
@@ -364,7 +367,7 @@ export default function ImageUploader({ onImageReady, onBodyInfoChange, onMinorB
             </div>
           )}
           <div ref={footerRef} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10000, backgroundColor: 'rgba(12,10,9,0.75)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            <p style={{ color: '#57534e', fontSize: '12px', textAlign: 'center', padding: '10px 0', letterSpacing: '0.05em' }}>
+            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', textAlign: 'center', padding: '10px 0', letterSpacing: '0.05em' }}>
               ピンチでズーム・ドラッグで移動
             </p>
           </div>
